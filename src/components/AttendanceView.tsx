@@ -294,46 +294,46 @@ export default function AttendanceView({
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-gray-150 text-gray-400 font-mono uppercase tracking-wider">
-                    <th className="pb-3 text-left">Agent</th>
-                    <th className="pb-3 text-center">Zone attendue</th>
-                    <th className="pb-3 text-center">Check-In</th>
-                    <th className="pb-3 text-center">Check-Out</th>
-                    <th className="pb-3 text-center">Distance GPS</th>
-                    <th className="pb-3 text-center">Statut</th>
-                    <th className="pb-3 text-center w-20">Actions admin</th>
+                  <tr className="bg-slate-50 border-b border-gray-200 text-gray-500 font-mono text-[10px] uppercase tracking-wider">
+                    <th className="py-3 px-4 text-left">Agent</th>
+                    <th className="py-3 px-4 text-center">Zone attendue</th>
+                    <th className="py-3 px-4 text-center">Check-In</th>
+                    <th className="py-3 px-4 text-center">Check-Out</th>
+                    <th className="py-3 px-4 text-center">Précision / GPS</th>
+                    <th className="py-3 px-4 text-center">Statut</th>
+                    <th className="py-3 px-4 text-center w-24">Actions admin</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-gray-100 bg-white">
                   {filteredLogs.length > 0 ? (
                     filteredLogs.map(log => {
                       const age = actors.find(a => a.id === log.agent_id);
                       return (
-                        <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="py-3 text-left">
-                            <div className="flex items-center gap-2">
+                        <tr key={log.id} className="hover:bg-slate-50/70 transition-colors">
+                          <td className="py-3.5 px-4 text-left">
+                            <div className="flex items-center gap-3">
                               {log.photo_url ? (
-                                <img src={log.photo_url} alt="agent" className="w-6 h-6 rounded-full border shrink-0 object-cover" />
+                                <img src={log.photo_url} alt="agent" className="w-8 h-8 rounded-full border border-gray-200 shrink-0 object-cover" />
                               ) : (
-                                <div className="w-6 h-6 rounded-full bg-slate-100 font-bold shrink-0 text-gray-400 flex items-center justify-center">?</div>
+                                <div className="w-8 h-8 rounded-full bg-slate-100 font-bold shrink-0 text-gray-400 flex items-center justify-center border border-gray-200">?</div>
                               )}
                               <div>
-                                <p className="font-bold text-gray-800">{log.agent_name}</p>
-                                <span className="text-[10px] text-gray-400 font-mono">{log.agent_code}</span>
+                                <p className="font-bold text-gray-900">{log.agent_name}</p>
+                                <span className="text-[10px] text-gray-450 font-mono tracking-tight">{log.agent_code}</span>
                               </div>
                             </div>
                           </td>
-                          <td className="py-3 text-center text-gray-650 font-semibold">{log.zone_name}</td>
-                          <td className="py-3 text-center font-mono text-gray-500">
+                          <td className="py-3.5 px-4 text-center text-gray-650 font-semibold">{log.zone_name}</td>
+                          <td className="py-3.5 px-4 text-center font-mono text-gray-500">
                             {log.checkin_at ? new Date(log.checkin_at).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}) : '--'}
                           </td>
-                          <td className="py-3 text-center font-mono text-gray-500">
+                          <td className="py-3.5 px-4 text-center font-mono text-gray-500">
                             {log.checkout_at ? (
                               new Date(log.checkout_at).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})
                             ) : log.status === 'not_closed' ? (
                               <button
                                 onClick={() => handleSimulateCheckout(log.id)}
-                                className="px-1.5 py-0.5 bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-100 rounded-sm font-bold text-[9px] cursor-pointer"
+                                className="px-2 py-1 bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-100 rounded-md font-bold text-[10px] cursor-pointer"
                               >
                                 Clôturer now
                               </button>
@@ -341,11 +341,11 @@ export default function AttendanceView({
                               <span className="text-gray-300 italic">En service</span>
                             )}
                           </td>
-                          <td className="py-3 text-center font-mono text-slate-500 font-bold">
+                          <td className="py-3.5 px-4 text-center font-mono text-slate-500 font-bold">
                             {log.accuracy_m ? `±${log.accuracy_m} m` : 'Inconnu'}
                           </td>
-                          <td className="py-3 text-center">
-                            <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                          <td className="py-3.5 px-4 text-center">
+                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
                               log.status === 'present'
                                 ? 'bg-green-100 text-green-700'
                                 : log.status === 'late'
@@ -357,18 +357,18 @@ export default function AttendanceView({
                               {log.status === 'out_of_zone' ? 'Hors zone' : log.status}
                             </span>
                             {log.note && (
-                              <p className="text-[9px] text-gray-400 italic max-w-[140px] truncate text-center mx-auto" title={log.note}>
+                              <p className="text-[9px] text-gray-400 italic max-w-[140px] truncate text-center mx-auto mt-0.5" title={log.note}>
                                 "{log.note}"
                               </p>
                             )}
                           </td>
-                          <td className="py-3 text-center">
-                            <div className="flex gap-1 justify-center">
+                          <td className="py-3.5 px-4 text-center">
+                            <div className="flex gap-1.5 justify-center">
                               {log.status === 'out_of_zone' && (
                                 <button
                                   onClick={() => handleValidateLog(log, 'present')}
                                   title="Forcer validation présent (Dérogation)"
-                                  className="w-5 h-5 bg-green-50 text-green-600 border border-green-200 rounded-sm flex items-center justify-center hover:bg-green-100 cursor-pointer text-[10px] font-bold"
+                                  className="w-6 h-6 bg-green-50 text-green-600 border border-green-250 rounded-md flex items-center justify-center hover:bg-green-100 cursor-pointer text-[11px] font-bold"
                                 >
                                   ✓
                                 </button>
@@ -376,9 +376,9 @@ export default function AttendanceView({
                               <a
                                 href={`tel:${age?.phone || ''}`}
                                 title="Appeler l'agent"
-                                className="w-5 h-5 bg-sky-50 text-sky-600 border border-sky-200 rounded-sm flex items-center justify-center hover:bg-sky-100"
+                                className="w-6 h-6 bg-sky-50 text-sky-600 border border-sky-200 rounded-md flex items-center justify-center hover:bg-sky-100"
                               >
-                                <PhoneCall className="w-3 h-3" />
+                                <PhoneCall className="w-3.5 h-3.5" />
                               </a>
                             </div>
                           </td>

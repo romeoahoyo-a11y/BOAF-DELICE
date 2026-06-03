@@ -140,20 +140,20 @@ export default function ReportsView({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50 border-b border-gray-100 text-gray-500 font-mono uppercase tracking-wider py-2">
-                  <th className="p-3">Gamme Article</th>
-                  <th className="p-3 text-center">Unités vendues</th>
-                  <th className="p-3 text-right">Marge Est. %</th>
-                  <th className="p-3 text-right">C.A. Réalisé (FCFA)</th>
+                <tr className="bg-slate-50 border-b border-gray-200 text-gray-500 font-mono text-[10px] uppercase tracking-wider">
+                  <th className="py-3 px-4">Gamme Article</th>
+                  <th className="py-3 px-4 text-center">Unités vendues</th>
+                  <th className="py-3 px-4 text-right">Marge Est. %</th>
+                  <th className="py-3 px-4 text-right">C.A. Réalisé (FCFA)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-100 bg-white">
                 {categoryStats.map(cat => (
-                  <tr key={cat.name} className="hover:bg-slate-50/50">
-                    <td className="p-3 font-semibold text-gray-800">{cat.name}</td>
-                    <td className="p-3 text-center font-mono font-bold text-gray-600">{cat.qty.toLocaleString()}</td>
-                    <td className="p-3 text-right font-mono font-bold text-orange-500">{cat.margin}</td>
-                    <td className="p-3 text-right font-black text-[#0B5D2A]">{cat.sales.toLocaleString()} F</td>
+                  <tr key={cat.name} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3.5 px-4 font-bold text-gray-800">{cat.name}</td>
+                    <td className="py-3.5 px-4 text-center font-mono font-black text-gray-650">{cat.qty.toLocaleString()}</td>
+                    <td className="py-3.5 px-4 text-right font-mono font-bold text-orange-500">{cat.margin}</td>
+                    <td className="py-3.5 px-4 text-right font-black text-[#0B5D2A]">{cat.sales.toLocaleString()} F</td>
                   </tr>
                 ))}
               </tbody>
@@ -216,15 +216,15 @@ export default function ReportsView({
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-50 border-b border-gray-100 text-gray-500 font-mono uppercase tracking-wider py-2">
-                <th className="p-3">Nom complet agent</th>
-                <th className="p-3 text-center">Rapport Présence</th>
-                <th className="p-3 text-center">Retards déclarés</th>
-                <th className="p-3 text-center">Sorties hors-zone</th>
-                <th className="p-3 text-right">Taux conformité GPS</th>
+              <tr className="bg-slate-50 border-b border-gray-200 text-gray-500 font-mono text-[10px] uppercase tracking-wider">
+                <th className="py-3 px-4">Nom complet agent</th>
+                <th className="py-3 px-4 text-center">Rapport Présence</th>
+                <th className="py-3 px-4 text-center">Retards déclarés</th>
+                <th className="py-3 px-4 text-center">Sorties hors-zone</th>
+                <th className="py-3 px-4 text-right">Taux conformité GPS</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-100 bg-white">
               {actors.filter(a => a.type_actor === 'agent').map(ag => {
                 const logs = attendanceLogs.filter(l => l.agent_id === ag.id);
                 const activeChecked = logs.length;
@@ -238,12 +238,12 @@ export default function ReportsView({
                 }
 
                 return (
-                  <tr key={ag.id} className="hover:bg-slate-50/50">
-                    <td className="p-3 font-semibold text-gray-800">{ag.full_name}</td>
-                    <td className="p-3 text-center font-bold text-gray-700">{activeChecked} déclarations</td>
-                    <td className="p-3 text-center font-semibold text-amber-600">{lateChecked} retards</td>
-                    <td className="p-3 text-center font-semibold text-red-650">{outOfZoneChecked} alertes</td>
-                    <td className="p-3 text-right font-black text-emerald-600">{Math.max(20, compliance)}% de conformité</td>
+                  <tr key={ag.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3.5 px-4 font-bold text-gray-950">{ag.full_name}</td>
+                    <td className="py-3.5 px-4 text-center font-bold text-gray-700">{activeChecked} déclarations</td>
+                    <td className="py-3.5 px-4 text-center font-semibold text-amber-600">{lateChecked} retards</td>
+                    <td className="py-3.5 px-4 text-center font-semibold text-red-650">{outOfZoneChecked} alertes</td>
+                    <td className="py-3.5 px-4 text-right font-black text-emerald-600">{Math.max(20, compliance)}% de conformité</td>
                   </tr>
                 );
               })}

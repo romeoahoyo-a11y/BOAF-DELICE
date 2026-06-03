@@ -96,6 +96,30 @@ export default function ActorsView({
     return true;
   });
 
+  // Filters setup for promo codes
+  const filteredPromoCodes = promoCodes.filter(pc => {
+    // Search term
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      const matchCode = pc.code.toLowerCase().includes(term);
+      const actor = actors.find(a => a.id === pc.actor_id);
+      const matchActor = actor?.full_name.toLowerCase().includes(term);
+      if (!matchCode && !matchActor) return false;
+    }
+
+    // Zone filter
+    if (selectedZone !== 'all') {
+      const actor = actors.find(a => a.id === pc.actor_id);
+      const effectiveZoneId = pc.zone_id || actor?.zone_id;
+      if (effectiveZoneId !== selectedZone) return false;
+    }
+
+    // Status filter
+    if (selectedStatus !== 'all' && pc.status !== selectedStatus) return false;
+
+    return true;
+  });
+
   // Calculate stats for selected actor in right panel
   const getActorStats = (actorId: string) => {
     const actPromoCodes = promoCodes.filter(c => c.actor_id === actorId).map(c => c.code);
@@ -289,6 +313,7 @@ export default function ActorsView({
               { id: 'partner', label: 'Partenaires', count: actors.filter(a => a.type_actor === 'partner').length },
               { id: 'ambassador', label: 'Ambassadeurs', count: actors.filter(a => a.type_actor === 'ambassador').length },
               { id: 'collaborator', label: 'Collaborateurs', count: actors.filter(a => a.type_actor === 'collaborator').length },
+              { id: 'promo_codes', label: '🎟️ Codes Promo', count: promoCodes.length },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -355,85 +380,157 @@ export default function ActorsView({
           {/* Table display */}
           <div className="bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-gray-100 text-gray-500 font-mono uppercase tracking-wider">
-                    <th className="py-3 px-4">Identité Acteur</th>
-                    <th className="py-3 px-4">Code d'accès</th>
-                    <th className="py-3 px-4">Zone</th>
-                    <th className="py-3 px-4 text-center">Commission %</th>
-                    <th className="py-3 px-4 text-right">Ventes Net</th>
-                    <th className="py-3 px-4 text-center">Statut</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredActors.length > 0 ? (
-                    filteredActors.map((act) => {
-                      const isActiveSelected = selectedActor?.id === act.id;
-                      const actZone = zones.find(z => z.id === act.zone_id)?.nom || 'Non défini';
-                      
-                      // Calculate sum of valid orders
-                      const promoActs = promoCodes.filter(p => p.actor_id === act.id).map(p => p.code);
-                      const actOrders = orders.filter(o => o.order_status === 'valid' && o.code_promo_text && promoActs.includes(o.code_promo_text));
-                      const salesVolumeNet = actOrders.reduce((sum, o) => sum + o.total_net, 0);
-
-                      return (
-                        <tr
-                          key={act.id}
-                          onClick={() => setSelectedActor(act)}
-                          className={`cursor-pointer transition-all ${
-                            isActiveSelected ? 'bg-orange-50/40 border-l-4 border-orange-500' : 'hover:bg-slate-50/70'
-                          }`}
-                        >
-                          <td className="py-3.5 px-4 font-sans">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-600 font-black flex items-center justify-center font-display uppercase shrink-0">
-                                {act.full_name.charAt(0)}
-                              </div>
-                              <div>
-                                <p className="font-bold text-gray-900">{act.full_name}</p>
-                                <span className="text-[10px] text-gray-400 capitalize block">{act.type_actor}</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-4 font-mono font-bold text-gray-600">
-                            <span className="bg-slate-100 px-2.5 py-1 rounded-md text-[11px] border border-slate-150">
-                              {act.main_code}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4 text-gray-600 font-semibold">{actZone}</td>
-                          <td className="py-3.5 px-4 text-center font-bold text-orange-500">
-                            {act.commission_rate > 0 ? `${act.commission_rate}%` : 'Aucun'}
-                          </td>
-                          <td className="py-3.5 px-4 text-right font-black text-[#0B5D2A]">
-                            {salesVolumeNet.toLocaleString('fr-FR')} F
-                          </td>
-                          <td className="py-3.5 px-4 text-center">
-                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                              act.status === 'active'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-red-100 text-red-700'
-                            }`}>
-                              {act.status}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="text-center py-12 text-gray-400 italic font-sans text-xs">
-                        Aucun acteur trouvé pour ces filtres.
-                      </td>
+              {activeTypeTab === 'promo_codes' ? (
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-gray-100 text-gray-500 font-mono uppercase tracking-wider">
+                      <th className="py-3 px-4">Code Promo</th>
+                      <th className="py-3 px-4">Bénéficiaire Acteur</th>
+                      <th className="py-3 px-4 text-center">Type Acteur</th>
+                      <th className="py-3 px-4">Zone</th>
+                      <th className="py-3 px-4 text-right">Ventes Générées</th>
+                      <th className="py-3 px-4 text-center">Statut</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredPromoCodes.length > 0 ? (
+                      filteredPromoCodes.map((pc) => {
+                        const actor = actors.find(a => a.id === pc.actor_id);
+                        const actZone = zones.find(z => z.id === (pc.zone_id || actor?.zone_id))?.nom || 'Général';
+                        
+                        // Calculate sales matching this code
+                        const actOrders = orders.filter(o => o.order_status === 'valid' && o.code_promo_text?.toUpperCase() === pc.code.toUpperCase());
+                        const salesVolumeNet = actOrders.reduce((sum, o) => sum + o.total_net, 0);
+
+                        const isActiveSelected = selectedActor?.id === actor?.id;
+
+                        return (
+                          <tr
+                            key={pc.id}
+                            onClick={() => {
+                              if (actor) setSelectedActor(actor);
+                            }}
+                            className={`cursor-pointer transition-all ${
+                              isActiveSelected ? 'bg-orange-50/40 border-l-4 border-orange-500' : 'hover:bg-slate-50/70'
+                            }`}
+                          >
+                            <td className="py-3.5 px-4 font-mono font-bold text-gray-800 whitespace-nowrap">
+                              <span className="bg-violet-50 text-violet-700 border border-violet-150 px-2.5 py-1.5 rounded-md text-[11px] font-bold whitespace-nowrap block w-max tracking-wide">
+                                {pc.code}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 font-sans font-bold text-gray-900">
+                              {actor ? actor.full_name : 'Campagne Directe'}
+                            </td>
+                            <td className="py-3.5 px-4 text-center uppercase text-[10px] text-gray-400 capitalize whitespace-nowrap">
+                              {actor ? actor.type_actor : pc.type_code}
+                            </td>
+                            <td className="py-3.5 px-4 text-gray-650 font-semibold">{actZone}</td>
+                            <td className="py-3.5 px-4 text-right font-black text-[#0B5D2A] whitespace-nowrap">
+                              {salesVolumeNet.toLocaleString('fr-FR')} F
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${
+                                pc.status === 'active'
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-red-100 text-red-700'
+                              }`}>
+                                {pc.status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="text-center py-12 text-gray-400 italic font-sans text-xs">
+                          Aucun code promotionnel trouvé pour ces filtres.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              ) : (
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-gray-100 text-gray-500 font-mono uppercase tracking-wider">
+                      <th className="py-3 px-4">Identité Acteur</th>
+                      <th className="py-3 px-4">Code d'accès</th>
+                      <th className="py-3 px-4">Zone</th>
+                      <th className="py-3 px-4 text-center">Commission %</th>
+                      <th className="py-3 px-4 text-right">Ventes Net</th>
+                      <th className="py-3 px-4 text-center">Statut</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredActors.length > 0 ? (
+                      filteredActors.map((act) => {
+                        const isActiveSelected = selectedActor?.id === act.id;
+                        const actZone = zones.find(z => z.id === act.zone_id)?.nom || 'Non défini';
+                        
+                        // Calculate sum of valid orders
+                        const promoActs = promoCodes.filter(p => p.actor_id === act.id).map(p => p.code);
+                        const actOrders = orders.filter(o => o.order_status === 'valid' && o.code_promo_text && promoActs.includes(o.code_promo_text));
+                        const salesVolumeNet = actOrders.reduce((sum, o) => sum + o.total_net, 0);
+
+                        return (
+                          <tr
+                            key={act.id}
+                            onClick={() => setSelectedActor(act)}
+                            className={`cursor-pointer transition-all ${
+                              isActiveSelected ? 'bg-orange-50/40 border-l-4 border-orange-500' : 'hover:bg-slate-50/70'
+                            }`}
+                          >
+                            <td className="py-3.5 px-4 font-sans">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-600 font-black flex items-center justify-center font-display uppercase shrink-0">
+                                  {act.full_name.charAt(0)}
+                                </div>
+                                <div>
+                                  <p className="font-bold text-gray-900">{act.full_name}</p>
+                                  <span className="text-[10px] text-gray-400 capitalize block">{act.type_actor}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 font-mono font-bold text-gray-600 whitespace-nowrap">
+                              <span className="bg-slate-100 px-2.5 py-1 rounded-md text-[11px] border border-slate-150 font-mono tracking-wide whitespace-nowrap block w-max">
+                                {act.main_code}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-gray-600 font-semibold">{actZone}</td>
+                            <td className="py-3.5 px-4 text-center font-bold text-orange-500">
+                              {act.commission_rate > 0 ? `${act.commission_rate}%` : 'Aucun'}
+                            </td>
+                            <td className="py-3.5 px-4 text-right font-black text-[#0B5D2A] whitespace-nowrap">
+                              {salesVolumeNet.toLocaleString('fr-FR')} F
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${
+                                act.status === 'active'
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-red-100 text-red-700'
+                              }`}>
+                                {act.status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="text-center py-12 text-gray-400 italic font-sans text-xs">
+                          Aucun acteur trouvé pour ces filtres.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
             </div>
 
             {/* Pagination simulator */}
             <div className="p-4 bg-slate-50 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
-              <span>Affichage de {filteredActors.length} sur {actors.length} fiches</span>
+              <span>Affichage de {activeTypeTab === 'promo_codes' ? filteredPromoCodes.length : filteredActors.length} sur {activeTypeTab === 'promo_codes' ? promoCodes.length : actors.length} fiches</span>
               <div className="flex gap-1.5">
                 <button disabled className="px-2.5 py-1 bg-white border border-gray-200 rounded-md disabled:opacity-50">Préc.</button>
                 <button className="px-2.5 py-1 bg-white border border-orange-500 text-orange-600 font-bold rounded-md">1</button>
@@ -573,7 +670,7 @@ export default function ActorsView({
                     .map(code => (
                       <span
                         key={code.id}
-                        className={`px-2 py-1 rounded-md font-bold font-mono text-[10px] uppercase border ${
+                        className={`px-2.5 py-1 rounded-md font-bold font-mono text-[10px] uppercase border whitespace-nowrap tracking-wide ${
                           code.status === 'active'
                             ? 'bg-green-50 text-green-700 border-green-200'
                             : 'bg-red-50 text-red-700 border-red-200'

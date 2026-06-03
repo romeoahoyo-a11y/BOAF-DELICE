@@ -536,38 +536,38 @@ export default function DashboardView({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-gray-100 text-gray-400 font-mono uppercase tracking-wider py-2">
-                  <th className="pb-3 text-left">Acteur/Bénéficiaire</th>
-                  <th className="pb-3 text-center">Code Principal</th>
-                  <th className="pb-3 text-center">Commandes</th>
-                  <th className="pb-3 text-right">Ventes Générées</th>
-                  <th className="pb-3 text-right">Commission</th>
+                <tr className="bg-slate-50 border-b border-gray-200 text-gray-500 font-mono text-[10px] uppercase tracking-wider">
+                  <th className="py-3 px-4 text-left">Acteur/Bénéficiaire</th>
+                  <th className="py-3 px-4 text-center">Code Principal</th>
+                  <th className="py-3 px-4 text-center">Commandes</th>
+                  <th className="py-3 px-4 text-right">Ventes Générées</th>
+                  <th className="py-3 px-4 text-right">Commission</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-100 bg-white">
                 {topAgents.map((ag, i) => (
-                  <tr key={ag.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="py-3 font-semibold text-gray-800">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-500 font-extrabold text-[10px] flex items-center justify-center">
+                  <tr key={ag.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3 px-4 font-semibold text-gray-800">
+                      <div className="flex items-center gap-3">
+                        <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-600 font-extrabold text-[10px] flex items-center justify-center shrink-0">
                           {i + 1}
                         </span>
                         <div>
-                          <p>{ag.name}</p>
-                          <span className="text-[10px] text-gray-400 capitalize">{ag.type}</span>
+                          <p className="font-bold text-gray-950">{ag.name}</p>
+                          <span className="text-[10px] text-gray-400 capitalize block">{ag.type}</span>
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 text-center">
-                      <span className="font-mono bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md font-bold">
+                    <td className="py-3 px-4 text-center">
+                      <span className="font-mono bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md font-bold text-[11px] border border-slate-200">
                         {ag.code}
                       </span>
                     </td>
-                    <td className="py-3 text-center font-bold text-gray-700">{ag.salesCount}</td>
-                    <td className="py-3 text-right font-bold text-[#0B5D2A]">
+                    <td className="py-3 px-4 text-center font-bold text-gray-700">{ag.salesCount}</td>
+                    <td className="py-3 px-4 text-right font-bold text-[#0B5D2A]">
                       {ag.salesVolume.toLocaleString('fr-FR')} F
                     </td>
-                    <td className="py-3 text-right font-semibold text-orange-500">
+                    <td className="py-3 px-4 text-right font-semibold text-orange-600">
                       {ag.commissionGenerated.toLocaleString('fr-FR')} F
                     </td>
                   </tr>

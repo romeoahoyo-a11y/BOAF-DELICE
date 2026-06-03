@@ -561,48 +561,48 @@ export default function SalesView({
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-50 border-b border-gray-100 text-gray-500 font-mono uppercase tracking-wider py-2">
-                <th className="p-3">Numéro Ticket</th>
-                <th className="p-3">Date d'Émission</th>
-                <th className="p-3">Identité Client</th>
-                <th className="p-3 text-center">Canal d'Apport</th>
-                <th className="p-3 text-center">Code Promo</th>
-                <th className="p-3 text-right">Montant Brut</th>
-                <th className="p-3 text-right">Montant Net</th>
-                <th className="p-3 text-center">Règlement</th>
+              <tr className="bg-slate-50 border-b border-gray-200 text-gray-500 font-mono text-[10px] uppercase tracking-wider">
+                <th className="py-3 px-4">Numéro Ticket</th>
+                <th className="py-3 px-4">Date d'Émission</th>
+                <th className="py-3 px-4">Identité Client</th>
+                <th className="py-3 px-4 text-center">Canal d'Apport</th>
+                <th className="py-3 px-4 text-center">Code Promo</th>
+                <th className="py-3 px-4 text-right">Montant Brut</th>
+                <th className="py-3 px-4 text-right">Montant Net</th>
+                <th className="py-3 px-4 text-center">Règlement</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-105 bg-white">
               {orders.slice(0, 10).map(ord => (
                 <tr key={ord.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="p-3 font-mono font-bold text-slate-800">
-                    <span className="flex items-center gap-1.5 text-[#0B5D2A]">
-                      <FileText className="w-3.5 h-3.5 text-gray-400" />
+                  <td className="py-4 px-4 font-mono font-bold text-slate-800">
+                    <span className="flex items-center gap-2 text-[#0B5D2A]">
+                      <FileText className="w-4 h-4 text-gray-450 shrink-0" />
                       {ord.ticket_number}
                     </span>
                   </td>
-                  <td className="p-3 text-gray-500 font-mono">
+                  <td className="py-4 px-4 text-gray-500 font-mono">
                     {new Date(ord.created_at).toLocaleDateString('fr-FR')}
                   </td>
-                  <td className="p-3 font-bold text-gray-800 font-sans">{ord.customer_name}</td>
-                  <td className="p-3 text-center">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700">
+                  <td className="py-4 px-4 font-bold text-gray-900 font-sans">{ord.customer_name}</td>
+                  <td className="py-4 px-4 text-center">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-705 border border-slate-200">
                       {ord.source}
                     </span>
                   </td>
-                  <td className="p-3 text-center">
+                  <td className="py-4 px-4 text-center">
                     {ord.code_promo_text ? (
-                      <span className="px-2 py-0.5 rounded-md font-mono font-bold bg-violet-50 text-violet-700 border border-violet-100">
+                      <span className="px-2.5 py-1 rounded-md font-mono font-bold bg-violet-50 text-violet-700 border border-violet-100">
                         {ord.code_promo_text}
                       </span>
                     ) : (
                       <span className="text-gray-400 italic">Vente Directe</span>
                     )}
                   </td>
-                  <td className="p-3 text-right text-gray-650">{ord.total_brut.toLocaleString()} F</td>
-                  <td className="p-3 text-right font-black text-[#0B5D2A]">{ord.total_net.toLocaleString()} F</td>
-                  <td className="p-3 text-center">
-                    <span className="bg-sky-50 text-sky-700 px-2 py-0.5 rounded-md font-semibold text-[10px]">
+                  <td className="py-4 px-4 text-right text-gray-600 font-semibold">{ord.total_brut.toLocaleString()} F</td>
+                  <td className="py-4 px-4 text-right font-black text-[#0B5D2A]">{ord.total_net.toLocaleString()} F</td>
+                  <td className="py-4 px-4 text-center">
+                    <span className="bg-sky-50 text-sky-700 px-2.5 py-1 rounded-md font-semibold text-[10px] border border-sky-100">
                       {ord.payment_mode}
                     </span>
                   </td>
