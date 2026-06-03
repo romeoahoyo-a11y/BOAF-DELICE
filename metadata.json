@@ -1,0 +1,6 @@
+{
+  "name": "BOAF Délices",
+  "description": "Plateforme complète et professionnelle de suivi commercial et terrain pour BOAF Délices.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
