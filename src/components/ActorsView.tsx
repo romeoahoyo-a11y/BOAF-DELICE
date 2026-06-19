@@ -2,20 +2,17 @@ import React, { useState } from 'react';
 import {
   Users,
   Search,
-  Filter,
-  Download,
-  Plus,
+  PlusCircle,
   Phone,
-  Mail,
-  MapPin,
-  Coins,
+  Tag,
   Shield,
-  Clock,
-  Briefcase,
+  MapPin,
   X,
-  Target,
-  FileCheck2,
-  Calendar
+  UserCheck,
+  Coins,
+  ChevronRight,
+  TrendingUp,
+  AlertCircle
 } from 'lucide-react';
 import { Actor, Zone, PromoCode, Order, Commission } from '../types';
 
@@ -28,7 +25,7 @@ interface ActorsViewProps {
   onAddActor: (actor: Actor) => void;
   onUpdateActor: (actor: Actor) => void;
   onAddPromoCode: (code: PromoCode) => void;
-  currentRole: string; // admin, superviseur etc
+  currentRole: string;
 }
 
 export default function ActorsView({
@@ -42,859 +39,498 @@ export default function ActorsView({
   onAddPromoCode,
   currentRole
 }: ActorsViewProps) {
-  // Current tab filter for Actor Type: 'all' | ActorType
-  const [activeTypeTab, setActiveTypeTab] = useState<string>('all');
+
+  // State
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedZone, setSelectedZone] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [selectedActorDetails, setSelectedActorDetails] = useState<Actor | null>(null);
 
-  // Selected Actor for the RIGHT DRAW PANEL
-  const [selectedActor, setSelectedActor] = useState<Actor | null>(actors[1]); // Eric Adjovi by default for premium preview!
+  // Form Modal state
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [selectedRoleType, setSelectedRoleType] = useState<Actor['type_actor']>('agent');
+  const [assignedCodeText, setAssignedCodeText] = useState('');
+  const [commissionRate, setCommissionRate] = useState(5);
+  const [zoneId, setZoneId] = useState(zones[0]?.id || 'z1');
+  const [objective, setObjective] = useState(250000);
 
-  // Form creation Modal State
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newActorName, setNewActorName] = useState('');
-  const [newActorPhone, setNewActorPhone] = useState('');
-  const [newActorEmail, setNewActorEmail] = useState('');
-  const [newActorType, setNewActorType] = useState<'employee' | 'agent' | 'partner' | 'collaborator' | 'ambassador'>('agent');
-  const [newActorZone, setNewActorZone] = useState('z1');
-  const [newActorRate, setNewActorRate] = useState<number>(5);
-  const [newActorObjective, setNewActorObjective] = useState<number>(500000);
-  const [newActorPoste, setNewActorPoste] = useState('Agent Mobile');
-  const [newActorAgentType, setNewActorAgentType] = useState('Moto-Vendeur');
-  const [newActorSchool, setNewActorSchool] = useState('');
-  const [errorText, setErrorText] = useState('');
-
-  // Auto assign promo code state
-  const [promoPrefix, setPromoPrefix] = useState('BOAF-AGT');
-  const [promoExpires, setPromoExpires] = useState('');
-
-  // Verification helper for admin/superviseur restriction
-  const isReadOnly = currentRole === 'lecteur';
-  const hasDirectionPower = currentRole === 'admin' || currentRole === 'superviseur';
-
-  // Filters setup
-  const filteredActors = actors.filter(act => {
-    // Tab filter
-    if (activeTypeTab !== 'all' && act.type_actor !== activeTypeTab) return false;
-
-    // Search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      const matchName = act.full_name.toLowerCase().includes(term);
-      const matchCode = act.main_code.toLowerCase().includes(term);
-      const matchPhone = act.phone.includes(term);
-      if (!matchName && !matchCode && !matchPhone) return false;
-    }
-
-    // Zone filter
-    if (selectedZone !== 'all' && act.zone_id !== selectedZone) return false;
-
-    // Status filter
-    if (selectedStatus !== 'all' && act.status !== selectedStatus) return false;
-
-    return true;
-  });
-
-  // Filters setup for promo codes
-  const filteredPromoCodes = promoCodes.filter(pc => {
-    // Search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      const matchCode = pc.code.toLowerCase().includes(term);
-      const actor = actors.find(a => a.id === pc.actor_id);
-      const matchActor = actor?.full_name.toLowerCase().includes(term);
-      if (!matchCode && !matchActor) return false;
-    }
-
-    // Zone filter
-    if (selectedZone !== 'all') {
-      const actor = actors.find(a => a.id === pc.actor_id);
-      const effectiveZoneId = pc.zone_id || actor?.zone_id;
-      if (effectiveZoneId !== selectedZone) return false;
-    }
-
-    // Status filter
-    if (selectedStatus !== 'all' && pc.status !== selectedStatus) return false;
-
-    return true;
-  });
-
-  // Calculate stats for selected actor in right panel
-  const getActorStats = (actorId: string) => {
-    const actPromoCodes = promoCodes.filter(c => c.actor_id === actorId).map(c => c.code);
+  // Auto calculate a nice prefix based on selected role type
+  React.useEffect(() => {
+    const randomSeq = Math.floor(100 + Math.random() * 900);
+    let prefix = 'BOAF-AGT';
+    if (selectedRoleType === 'partner') prefix = 'BOAF-PRT';
+    if (selectedRoleType === 'ambassador') prefix = 'BOAF-AMB';
+    if (selectedRoleType === 'collaborator') prefix = 'BOAF-COL';
+    if (selectedRoleType === 'employee') prefix = 'BOAF-EMP';
     
-    // Look for orders matching any of this actor's promo codes
-    const actOrders = orders.filter(
-      o => o.order_status === 'valid' && o.code_promo_text && actPromoCodes.includes(o.code_promo_text)
+    setAssignedCodeText(`${prefix}-${randomSeq}`);
+  }, [selectedRoleType]);
+
+  // Compute stats helper
+  const getActorStats = (actor: Actor) => {
+    // Orders generated with actor's code promo text
+    const actorOrders = orders.filter(o => 
+      o.order_status === 'valid' && 
+      o.code_promo_text?.toUpperCase() === actor.main_code?.toUpperCase()
     );
+    const totalSales = actorOrders.reduce((sum, o) => sum + o.total_net, 0);
 
-    const salesVolume = actOrders.reduce((sum, o) => sum + o.total_net, 0);
-    const orderCount = actOrders.length;
-
-    const commissionsTotal = commissions
-      .filter(c => c.actor_id === actorId && c.statut === 'paid')
-      .reduce((sum, c) => sum + c.montant_commission, 0);
-
-    const commissionsPending = commissions
-      .filter(c => c.actor_id === actorId && (c.statut === 'pending' || c.statut === 'validated'))
-      .reduce((sum, c) => sum + c.montant_commission, 0);
+    // Commissions earned
+    const actorCommissions = commissions.filter(c => c.actor_id === actor.id && c.statut !== 'rejected');
+    const totalCommissions = actorCommissions.reduce((sum, c) => sum + c.montant_commission, 0);
 
     return {
-      salesVolume,
-      orderCount,
-      commissionsTotal,
-      commissionsPending,
-      tickets: actOrders
+      totalSales,
+      totalCommissions,
+      salesCount: actorOrders.length
     };
   };
 
-  const selectedStats = selectedActor ? getActorStats(selectedActor.id) : null;
-
-  // Handle addition of new actor
-  const handleCreateActor = (e: React.FormEvent) => {
+  // Handle Form submit
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorText('');
-
-    if (!newActorName || !newActorPhone) {
-      setErrorText('Le nom et le téléphone sont obligatoires.');
+    if (!fullName || !phone) {
+      alert('Veuillez renseigner le nom complet et le téléphone.');
       return;
     }
 
-    // Format automatic unique code sequence
-    // Calculate how many actors of this type already exist
-    const countType = actors.filter(a => a.type_actor === newActorType).length + 1;
-    let typePrefix = 'BOAF-AGT-';
-    let commissionDefault = 5;
+    const nextId = `act-${Date.now()}`;
+    const codeText = assignedCodeText || 'BOAF-GEN';
 
-    if (newActorType === 'partner') {
-      typePrefix = 'BOAF-PART-';
-      commissionDefault = 6.5;
-    } else if (newActorType === 'ambassador') {
-      typePrefix = 'BOAF-AMB-';
-      commissionDefault = 4;
-    } else if (newActorType === 'collaborator') {
-      typePrefix = 'BOAF-COL-';
-      commissionDefault = 3;
-    } else if (newActorType === 'employee') {
-      typePrefix = 'BOAF-EMP-';
-      commissionDefault = 0;
-    }
-
-    const uniqueCode = `${typePrefix}${String(100 + countType).padStart(4, '0')}`;
-
-    const newCreated: Actor = {
-      id: `act-gen-${Date.now()}`,
-      type_actor: newActorType,
-      full_name: newActorName,
-      phone: newActorPhone,
-      email: newActorEmail || `${newActorName.toLowerCase().replace(/\s+/g, '')}@boaf.com`,
-      main_code: uniqueCode,
-      zone_id: newActorZone,
+    const newActor: Actor = {
+      id: nextId,
+      full_name: fullName,
+      phone: phone,
+      type_actor: selectedRoleType,
+      main_code: codeText,
+      commission_rate: Number(commissionRate),
       status: 'active',
-      commission_rate: newActorRate || commissionDefault,
+      zone_id: zoneId,
       date_integration: new Date().toISOString().split('T')[0],
-      objective_jour: newActorObjective ? Math.round(newActorObjective / 30) : 15000,
-      objective_mois: newActorObjective || 450000,
-      poste: newActorPoste || 'Agent terrain',
-      type_agent: newActorAgentType || 'Moto-Vendeur',
-      etablissement_optionnel: newActorSchool || undefined
+      email: '',
+      poste: selectedRoleType === 'employee' ? 'Administration' : 'Ambassadeur de zone',
+      objective_mois: Number(objective) || undefined,
+      type_agent: selectedRoleType === 'agent' ? 'Moto-Vendeur' : 'Relais local'
     };
 
-    onAddActor(newCreated);
+    onAddActor(newActor);
 
-    // Auto-create matching PromoCode record
-    const matchingCode: PromoCode = {
-      id: `code-gen-${Date.now()}`,
-      code: uniqueCode,
-      type_code: uniqueCode.split('-').slice(0, 2).join('-'), // e.g. BOAF-AGT
-      actor_id: newCreated.id,
-      zone_id: newActorZone,
-      status: 'active',
-      starts_at: newCreated.date_integration,
-      created_at: newCreated.date_integration
-    };
-    onAddPromoCode(matchingCode);
-
-    // Reset Form
-    setIsAddModalOpen(false);
-    setNewActorName('');
-    setNewActorPhone('');
-    setNewActorEmail('');
-    setSelectedActor(newCreated);
-  };
-
-  // Export visible list of actors as CSV file trigger
-  const exportActorsToCSV = () => {
-    let headers = 'ID,Nom,Type,Telephone,Email,Code Unique,Zone,Taux Comm %,Statut,Date Integration\n';
-    const csvContent = filteredActors.map(a => {
-      const zoneName = zones.find(z => z.id === a.zone_id)?.nom || 'Inconnue';
-      return `"${a.id}","${a.full_name}","${a.type_actor}","${a.phone}","${a.email}","${a.main_code}","${zoneName}",${a.commission_rate},"${a.status}","${a.date_integration}"`;
-    }).join('\n');
-
-    const blob = new Blob([headers + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `boaf_delices_acteurs_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Add extra promo-code directly for this actor
-  const handleAssignExtraCode = () => {
-    if (!selectedActor) return;
-    const countPromo = promoCodes.length + 1;
-    const formatCode = `${promoPrefix}-${String(100 + countPromo).padStart(4, '0')}`;
-
-    const extraCode: PromoCode = {
-      id: `code-ext-${Date.now()}`,
-      code: formatCode,
-      type_code: promoPrefix,
-      actor_id: selectedActor.id,
-      zone_id: selectedActor.zone_id,
+    // Create the matching promo code entry in db so it is active
+    const newCode: PromoCode = {
+      id: `code-${nextId}`,
+      code: codeText,
+      type_code: selectedRoleType === 'partner' ? 'BOAF-PRT' : 'BOAF-AGT',
+      actor_id: nextId,
       status: 'active',
       starts_at: new Date().toISOString().split('T')[0],
-      expires_at: promoExpires || undefined,
       created_at: new Date().toISOString().split('T')[0]
     };
+    onAddPromoCode(newCode);
 
-    onAddPromoCode(extraCode);
-    alert(`Nouveau code promo ${formatCode} attribué avec succès à ${selectedActor.full_name} !`);
+    // Reset Form
+    setFullName('');
+    setPhone('');
+    setCommissionRate(5);
+    setShowAddModal(false);
+    
+    alert(`L'acteur ${fullName} a été enregistré avec succès et son Code Promo ${codeText} est activé !`);
+  };
+
+  // Filter Actors list
+  const filteredActors = actors.filter(actor => {
+    // Role type filtering
+    if (roleFilter !== 'all' && actor.type_actor !== roleFilter) return false;
+
+    // Search query matching
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      const matchName = actor.full_name.toLowerCase().includes(q);
+      const matchCode = actor.main_code?.toLowerCase().includes(q);
+      const matchPhone = actor.phone.includes(q);
+      if (!matchName && !matchCode && !matchPhone) return false;
+    }
+
+    return true;
+  });
+
+  // Maps system actor type into clear readable terms
+  const getRoleLabel = (type: Actor['type_actor']) => {
+    switch (type) {
+      case 'employee': return 'Employé';
+      case 'agent': return 'Agent terrain';
+      case 'partner': return 'Partenaire';
+      case 'collaborator': return 'Collaborateur';
+      case 'ambassador': return 'Ambassadeur';
+      default: return 'Acteur';
+    }
+  };
+
+  const getRoleBadgeStyle = (type: Actor['type_actor']) => {
+    switch (type) {
+      case 'employee': return 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900/40';
+      case 'agent': return 'bg-orange-50 dark:bg-orange-950/20 text-orange-750 dark:text-orange-400 border-orange-200 dark:border-orange-950/40';
+      case 'partner': return 'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-950/45';
+      default: return 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-350 border-slate-200 dark:border-slate-800';
+    }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top action header controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-xs">
+    <div className="space-y-6 text-left">
+      
+      {/* Page Header */}
+      <div className="bg-white dark:bg-[#121c33] p-6 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-colors">
         <div>
-          <h2 className="font-display font-extrabold text-[#0B5D2A] text-xl tracking-tight flex items-center gap-2">
-            <Users className="w-5 h-5 text-orange-500" />
-            Gestion des acteurs & forces de vente
+          <h2 className="text-xl font-display font-black text-[#0B5D2A] dark:text-green-400 flex items-center gap-2">
+            <Users className="w-5 h-5 text-emerald-600" />
+            Gestion Unifiée des Acteurs
           </h2>
-          <p className="text-xs text-gray-400 font-sans mt-0.5">
-            Suivi des employés, agents, ambassadeurs, partenaires du réseau BOAF FUTURE HOLDINGS
+          <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-normal">
+            Visualisez et gérez l'ensemble des employés, agents terrain de distribution, partenaires dépositaires, ambassadeurs et collaborateurs BOAF Délices.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        {currentRole !== 'lecteur' && (
           <button
-            onClick={exportActorsToCSV}
-            className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-gray-700 hover:bg-slate-100 transition-all flex items-center gap-2 cursor-pointer"
+            onClick={() => setShowAddModal(true)}
+            className="px-6 py-3.5 bg-orange-500 hover:bg-orange-600 font-black text-white text-xs uppercase tracking-wide rounded-2xl shadow-sm flex items-center gap-2 cursor-pointer shrink-0 transition-transform hover:scale-101 border-none"
           >
-            <Download className="w-4 h-4 text-gray-500" />
-            Exporter CSV
+            <PlusCircle className="w-4.5 h-4.5" />
+            Ajouter un acteur
           </button>
-
-          {!isReadOnly && (
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="px-4 py-2.5 bg-[#0B5D2A] hover:bg-[#0B5D2A]/90 text-white rounded-xl text-xs font-semibold transition-all flex items-center gap-2 shadow-md shadow-green-900/10 cursor-pointer"
-            >
-              <Plus className="w-4 h-4 text-white" />
-              Ajouter un acteur
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* Main layout splitting List Grid & Right details panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Left / Middle List block */}
-        <div className="lg:col-span-2 space-y-4">
-          
-          {/* Quick Category Tab Filters (Tous, Employés, Agents terrain, Partenaires...) */}
-          <div className="flex bg-white p-1 rounded-2xl border border-gray-150 shadow-xs overflow-x-auto gap-1">
+      {/* Main List Table */}
+      <div className="bg-white dark:bg-[#121c33] p-6 rounded-3xl border border-gray-150 dark:border-slate-800 shadow-2xs space-y-4 transition-colors">
+        
+        {/* Filter bar */}
+        <div className="flex flex-col sm:flex-row gap-3 justify-between">
+          <div className="flex flex-wrap gap-2">
+            {/* Filter buttons */}
             {[
-              { id: 'all', label: 'Tout le réseau', count: actors.length },
-              { id: 'employee', label: 'Employés', count: actors.filter(a => a.type_actor === 'employee').length },
-              { id: 'agent', label: 'Agents terrain', count: actors.filter(a => a.type_actor === 'agent').length },
-              { id: 'partner', label: 'Partenaires', count: actors.filter(a => a.type_actor === 'partner').length },
-              { id: 'ambassador', label: 'Ambassadeurs', count: actors.filter(a => a.type_actor === 'ambassador').length },
-              { id: 'collaborator', label: 'Collaborateurs', count: actors.filter(a => a.type_actor === 'collaborator').length },
-              { id: 'promo_codes', label: '🎟️ Codes Promo', count: promoCodes.length },
+              { id: 'all', label: 'Tous les profils' },
+              { id: 'employee', label: 'Employés' },
+              { id: 'agent', label: 'Agents terrain' },
+              { id: 'partner', label: 'Partenaires' },
+              { id: 'collaborator', label: 'Collaborateurs' },
+              { id: 'ambassador', label: 'Ambassadeurs' }
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => {
-                  setActiveTypeTab(tab.id);
-                  setSelectedActor(null);
-                }}
-                className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl whitespace-nowrap transition-all cursor-pointer ${
-                  activeTypeTab === tab.id
-                    ? 'bg-[#0B5D2A] text-white'
-                    : 'text-gray-500 hover:text-gray-901 hover:bg-slate-50'
+                onClick={() => setRoleFilter(tab.id)}
+                className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all border cursor-pointer ${
+                  roleFilter === tab.id
+                    ? 'bg-[#0B5D2A] text-white border-[#0B5D2A] shadow-xs'
+                    : 'bg-white dark:bg-slate-900 text-gray-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 border-gray-200 dark:border-slate-800'
                 }`}
               >
-                <span>{tab.label}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                  activeTypeTab === tab.id ? 'bg-green-800 text-green-200' : 'bg-slate-100 text-slate-500'
-                }`}>
-                  {tab.count}
-                </span>
+                {tab.label}
               </button>
             ))}
           </div>
 
-          {/* Advanced Search & Filtering bar */}
-          <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-xs flex flex-wrap gap-3">
-            <div className="flex-1 relative min-w-44">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Rechercher par nom, téléphone, code promo..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-orange-500"
-              />
-            </div>
-
-            {/* Zone scope filter */}
-            <select
-              value={selectedZone}
-              onChange={(e) => setSelectedZone(e.target.value)}
-              className="text-xs bg-slate-50 border border-gray-200 py-2 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer"
-            >
-              <option value="all">Toutes les zones</option>
-              {zones.map(z => (
-                <option key={z.id} value={z.id}>
-                  {z.nom}
-                </option>
-              ))}
-            </select>
-
-            {/* Status scope filter */}
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="text-xs bg-slate-50 border border-gray-200 py-2 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer"
-            >
-              <option value="all">Tous les statuts</option>
-              <option value="active">Actif</option>
-              <option value="suspended">Suspendu</option>
-              <option value="inactive">Inactif</option>
-            </select>
-          </div>
-
-          {/* Table display */}
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              {activeTypeTab === 'promo_codes' ? (
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-gray-100 text-gray-500 font-mono uppercase tracking-wider">
-                      <th className="py-3 px-4">Code Promo</th>
-                      <th className="py-3 px-4">Bénéficiaire Acteur</th>
-                      <th className="py-3 px-4 text-center">Type Acteur</th>
-                      <th className="py-3 px-4">Zone</th>
-                      <th className="py-3 px-4 text-right">Ventes Générées</th>
-                      <th className="py-3 px-4 text-center">Statut</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {filteredPromoCodes.length > 0 ? (
-                      filteredPromoCodes.map((pc) => {
-                        const actor = actors.find(a => a.id === pc.actor_id);
-                        const actZone = zones.find(z => z.id === (pc.zone_id || actor?.zone_id))?.nom || 'Général';
-                        
-                        // Calculate sales matching this code
-                        const actOrders = orders.filter(o => o.order_status === 'valid' && o.code_promo_text?.toUpperCase() === pc.code.toUpperCase());
-                        const salesVolumeNet = actOrders.reduce((sum, o) => sum + o.total_net, 0);
-
-                        const isActiveSelected = selectedActor?.id === actor?.id;
-
-                        return (
-                          <tr
-                            key={pc.id}
-                            onClick={() => {
-                              if (actor) setSelectedActor(actor);
-                            }}
-                            className={`cursor-pointer transition-all ${
-                              isActiveSelected ? 'bg-orange-50/40 border-l-4 border-orange-500' : 'hover:bg-slate-50/70'
-                            }`}
-                          >
-                            <td className="py-3.5 px-4 font-mono font-bold text-gray-800 whitespace-nowrap">
-                              <span className="bg-violet-50 text-violet-700 border border-violet-150 px-2.5 py-1.5 rounded-md text-[11px] font-bold whitespace-nowrap block w-max tracking-wide">
-                                {pc.code}
-                              </span>
-                            </td>
-                            <td className="py-3.5 px-4 font-sans font-bold text-gray-900">
-                              {actor ? actor.full_name : 'Campagne Directe'}
-                            </td>
-                            <td className="py-3.5 px-4 text-center uppercase text-[10px] text-gray-400 capitalize whitespace-nowrap">
-                              {actor ? actor.type_actor : pc.type_code}
-                            </td>
-                            <td className="py-3.5 px-4 text-gray-650 font-semibold">{actZone}</td>
-                            <td className="py-3.5 px-4 text-right font-black text-[#0B5D2A] whitespace-nowrap">
-                              {salesVolumeNet.toLocaleString('fr-FR')} F
-                            </td>
-                            <td className="py-3.5 px-4 text-center">
-                              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${
-                                pc.status === 'active'
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-red-100 text-red-700'
-                              }`}>
-                                {pc.status}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={6} className="text-center py-12 text-gray-400 italic font-sans text-xs">
-                          Aucun code promotionnel trouvé pour ces filtres.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              ) : (
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-gray-100 text-gray-500 font-mono uppercase tracking-wider">
-                      <th className="py-3 px-4">Identité Acteur</th>
-                      <th className="py-3 px-4">Code d'accès</th>
-                      <th className="py-3 px-4">Zone</th>
-                      <th className="py-3 px-4 text-center">Commission %</th>
-                      <th className="py-3 px-4 text-right">Ventes Net</th>
-                      <th className="py-3 px-4 text-center">Statut</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {filteredActors.length > 0 ? (
-                      filteredActors.map((act) => {
-                        const isActiveSelected = selectedActor?.id === act.id;
-                        const actZone = zones.find(z => z.id === act.zone_id)?.nom || 'Non défini';
-                        
-                        // Calculate sum of valid orders
-                        const promoActs = promoCodes.filter(p => p.actor_id === act.id).map(p => p.code);
-                        const actOrders = orders.filter(o => o.order_status === 'valid' && o.code_promo_text && promoActs.includes(o.code_promo_text));
-                        const salesVolumeNet = actOrders.reduce((sum, o) => sum + o.total_net, 0);
-
-                        return (
-                          <tr
-                            key={act.id}
-                            onClick={() => setSelectedActor(act)}
-                            className={`cursor-pointer transition-all ${
-                              isActiveSelected ? 'bg-orange-50/40 border-l-4 border-orange-500' : 'hover:bg-slate-50/70'
-                            }`}
-                          >
-                            <td className="py-3.5 px-4 font-sans">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-600 font-black flex items-center justify-center font-display uppercase shrink-0">
-                                  {act.full_name.charAt(0)}
-                                </div>
-                                <div>
-                                  <p className="font-bold text-gray-900">{act.full_name}</p>
-                                  <span className="text-[10px] text-gray-400 capitalize block">{act.type_actor}</span>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-4 font-mono font-bold text-gray-600 whitespace-nowrap">
-                              <span className="bg-slate-100 px-2.5 py-1 rounded-md text-[11px] border border-slate-150 font-mono tracking-wide whitespace-nowrap block w-max">
-                                {act.main_code}
-                              </span>
-                            </td>
-                            <td className="py-3.5 px-4 text-gray-600 font-semibold">{actZone}</td>
-                            <td className="py-3.5 px-4 text-center font-bold text-orange-500">
-                              {act.commission_rate > 0 ? `${act.commission_rate}%` : 'Aucun'}
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-black text-[#0B5D2A] whitespace-nowrap">
-                              {salesVolumeNet.toLocaleString('fr-FR')} F
-                            </td>
-                            <td className="py-3.5 px-4 text-center">
-                              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${
-                                act.status === 'active'
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-red-100 text-red-700'
-                              }`}>
-                                {act.status}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={6} className="text-center py-12 text-gray-400 italic font-sans text-xs">
-                          Aucun acteur trouvé pour ces filtres.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* Pagination simulator */}
-            <div className="p-4 bg-slate-50 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
-              <span>Affichage de {activeTypeTab === 'promo_codes' ? filteredPromoCodes.length : filteredActors.length} sur {activeTypeTab === 'promo_codes' ? promoCodes.length : actors.length} fiches</span>
-              <div className="flex gap-1.5">
-                <button disabled className="px-2.5 py-1 bg-white border border-gray-200 rounded-md disabled:opacity-50">Préc.</button>
-                <button className="px-2.5 py-1 bg-white border border-orange-500 text-orange-600 font-bold rounded-md">1</button>
-                <button disabled className="px-2.5 py-1 bg-white border border-gray-200 rounded-md disabled:opacity-50">Suiv.</button>
-              </div>
-            </div>
+          <div className="relative max-w-xs w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
+            <input
+              type="text"
+              placeholder="Rechercher nom, code, téléphone..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full text-xs pl-9 pr-4 py-2 border border-gray-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-xl focus:outline-none focus:border-[#0B5D2A] dark:focus:border-green-450 text-gray-800 dark:text-slate-100 transition-colors"
+            />
           </div>
         </div>
 
-        {/* Right Details Panel - "Panneau droit" for selected actor profiles */}
-        <div className="lg:col-span-1">
-          {selectedActor ? (
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-md p-6 space-y-6 sticky top-24">
-              
-              {/* Profile Card Header */}
-              <div className="border-b border-[#E5E7EB] pb-5 text-center relative">
-                {/* Status Badge */}
-                <span className={`absolute top-0 right-0 text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
-                  selectedActor.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                }`}>
-                  {selectedActor.status}
-                </span>
-
-                <div className="w-16 h-16 rounded-2xl bg-orange-100 text-orange-600 font-extrabold text-2xl flex items-center justify-center mx-auto mb-3 shadow-sm border border-orange-200 font-display uppercase">
-                  {selectedActor.full_name.slice(0, 2)}
-                </div>
-                
-                <h3 className="font-display font-black text-gray-900 text-base tracking-tight leading-snug">
-                  {selectedActor.full_name}
-                </h3>
-                <span className="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full font-semibold uppercase tracking-wider text-[9px] mt-1 inline-block">
-                  {selectedActor.type_actor}
-                </span>
-
-                {/* Subdetails posting */}
-                {selectedActor.poste && (
-                  <p className="text-[11px] text-gray-400 mt-1.5 flex items-center justify-center gap-1">
-                    <Briefcase className="w-3 h-3" />
-                    {selectedActor.poste} {selectedActor.service ? `(${selectedActor.service})` : ''}
-                  </p>
-                )}
-              </div>
-
-              {/* Core numbers - volume generated, pending commissions */}
-              <div className="grid grid-cols-2 gap-4 bg-[#F8FAFC] p-4 rounded-2xl border border-gray-150">
-                <div className="space-y-1">
-                  <span className="text-[9px] font-sans text-gray-400 uppercase tracking-wider block">Ventes rattachées</span>
-                  <p className="text-sm font-extrabold text-[#0B5D2A] font-display">
-                    {selectedStats?.salesVolume.toLocaleString('fr-FR')} F
-                  </p>
-                  <span className="text-[10px] text-gray-500 font-mono block">
-                    {selectedStats?.orderCount} tickets
-                  </span>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-[9px] font-sans text-gray-400 uppercase tracking-wider block">Commissions</span>
-                  <p className="text-sm font-extrabold text-orange-600 font-display">
-                    {selectedStats?.commissionsPending.toLocaleString('fr-FR')} F
-                  </p>
-                  <span className="text-[10px] text-gray-500 font-mono block">
-                    {selectedActor.commission_rate}% de com.
-                  </span>
-                </div>
-              </div>
-
-              {/* Personal info contact links */}
-              <div className="space-y-3 font-sans text-xs text-gray-600 border-b border-[#E5E7EB] pb-5">
-                <h4 className="font-bold text-gray-800 text-[11px] uppercase tracking-wider font-display text-left">Coordonnées</h4>
-                
-                <div className="flex items-center gap-2.5">
-                  <Phone className="w-4 h-4 text-sky-500 shrink-0" />
-                  <span className="font-mono">{selectedActor.phone}</span>
-                </div>
-
-                <div className="flex items-center gap-2.5">
-                  <Mail className="w-4 h-4 text-teal-500 shrink-0" />
-                  <span className="text-gray-800 break-all font-mono">{selectedActor.email}</span>
-                </div>
-
-                <div className="flex items-center gap-2.5">
-                  <MapPin className="w-4 h-4 text-orange-500 shrink-0" />
-                  <span>Zone : <strong className="text-gray-900">{zones.find(z => z.id === selectedActor.zone_id)?.nom}</strong></span>
-                </div>
-
-                {selectedActor.objective_mois && (
-                  <div className="flex items-center gap-2.5">
-                    <Target className="w-4 h-4 text-purple-500 shrink-0" />
-                    <span>Objectif : <strong className="text-gray-900">{selectedActor.objective_mois.toLocaleString('fr-FR')} F / mois</strong></span>
-                  </div>
-                )}
-
-                {selectedActor.etablissement_optionnel && (
-                  <div className="flex items-center gap-2.5">
-                    <Briefcase className="w-4 h-4 text-indigo-500 shrink-0" />
-                    <span>École : <strong className="text-gray-900">{selectedActor.etablissement_optionnel}</strong></span>
-                  </div>
-                )}
-              </div>
-
-              {/* Extra Promo Code Manager Trigger */}
-              {!isReadOnly && hasDirectionPower && (
-                <div className="bg-orange-50/40 p-4 rounded-2xl border border-orange-100 space-y-3 text-xs">
-                  <h4 className="font-bold text-orange-800 flex items-center gap-2">
-                    <Coins className="w-4 h-4" />
-                    Attribuer code promo additionnel
-                  </h4>
-                  <div className="flex gap-2">
-                    <select
-                      value={promoPrefix}
-                      onChange={(e) => setPromoPrefix(e.target.value)}
-                      className="text-xs bg-white border border-gray-200 p-1.5 rounded-lg focus:outline-none"
+        {/* Responsive Table Grid */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 text-gray-450 dark:text-slate-400 uppercase font-mono tracking-wider text-[10px]">
+                <th className="py-3 px-4">Nom complet</th>
+                <th className="py-3 px-4">Téléphone</th>
+                <th className="py-3 px-4">Rôle / Profil</th>
+                <th className="py-3 px-4 text-center">Code Promo</th>
+                <th className="py-3 px-4 text-right">Volume Ventes</th>
+                <th className="py-3 px-4 text-right">Commissions payées</th>
+                <th className="py-3 px-4 text-center">Statut</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+              {filteredActors.length > 0 ? (
+                filteredActors.map(actor => {
+                  const stats = getActorStats(actor);
+                  return (
+                    <tr
+                      key={actor.id}
+                      onClick={() => setSelectedActorDetails(actor)}
+                      className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors cursor-pointer border-b border-gray-100 dark:border-slate-800/40"
+                      title="Cliquez pour afficher les détails avancés"
                     >
-                      <option value="BOAF-AGT">BOAF-AGT</option>
-                      <option value="BOAF-PART">BOAF-PART</option>
-                      <option value="BOAF-AMB">BOAF-AMB</option>
-                      <option value="BOAF-COL">BOAF-COL</option>
-                      <option value="BOAF-ECO">BOAF-ECO</option>
-                      <option value="BOAF-EGL">BOAF-EGL</option>
-                    </select>
-                    <button
-                      onClick={handleAssignExtraCode}
-                      className="flex-1 bg-orange-500 text-white hover:bg-orange-600 font-bold px-3 py-1.5 rounded-lg text-[11px] transition-all cursor-pointer"
-                    >
-                      Attribuer
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* List of active promotional codes */}
-              <div className="space-y-2 text-xs">
-                <h4 className="font-bold text-gray-800 text-[11px] uppercase tracking-wider font-display text-left">Codes promo reliés</h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {promoCodes
-                    .filter(c => c.actor_id === selectedActor.id)
-                    .map(code => (
-                      <span
-                        key={code.id}
-                        className={`px-2.5 py-1 rounded-md font-bold font-mono text-[10px] uppercase border whitespace-nowrap tracking-wide ${
-                          code.status === 'active'
-                            ? 'bg-green-50 text-green-700 border-green-200'
-                            : 'bg-red-50 text-red-700 border-red-200'
-                        }`}
-                      >
-                        {code.code}
-                      </span>
-                    ))}
-                </div>
-              </div>
-
-              {/* Recent connected ticket receipts preview */}
-              <div className="space-y-3">
-                <h4 className="font-bold text-gray-800 text-[11px] uppercase tracking-wider font-display text-left">Dernières ventes rattachées</h4>
-                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                  {selectedStats?.tickets && selectedStats.tickets.length > 0 ? (
-                    selectedStats.tickets.map(ticket => (
-                      <div key={ticket.id} className="flex justify-between items-center p-2 rounded-xl border border-gray-50 hover:bg-slate-50 transition-all text-xs">
-                        <div className="flex flex-col text-left">
-                          <span className="font-mono font-bold text-[#0B5D2A]">{ticket.ticket_number}</span>
-                          <span className="text-[10px] text-gray-400">
-                            {new Date(ticket.created_at).toLocaleDateString('fr-FR')}
+                      <td className="py-3.5 px-4 font-bold text-gray-950 dark:text-slate-100">
+                        {actor.full_name}
+                      </td>
+                      <td className="py-3.5 px-4 text-gray-500 dark:text-slate-400 font-mono">
+                        {actor.phone}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className={`px-2.5 py-1 text-[10px] font-bold uppercase rounded-md border ${getRoleBadgeStyle(actor.type_actor)}`}>
+                          {getRoleLabel(actor.type_actor)}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-800 dark:text-slate-300">
+                        {actor.main_code ? (
+                          <span className="bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded border border-purple-200 dark:border-purple-900/60 text-[10.5px]">
+                            {actor.main_code}
                           </span>
-                        </div>
-                        <span className="font-extrabold text-gray-900">{ticket.total_net.toLocaleString('fr-FR')} F</span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-[11px] text-gray-400 italic">Aucune vente enregistrée avec le code promo de cet acteur.</p>
-                  )}
-                </div>
-              </div>
-
-            </div>
-          ) : (
-            <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl p-8 text-center text-gray-400 text-xs italic">
-              Veuillez sélectionner un acteur sur le tableau pour inspecter son profil complet.
-            </div>
-          )}
+                        ) : (
+                          <span className="text-gray-400 dark:text-slate-500 italic">Aucun</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-black text-[#0B5D2A] dark:text-green-400 font-mono">
+                        {stats.totalSales.toLocaleString()} F
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-mono font-bold text-orange-600 dark:text-orange-400">
+                        {stats.totalCommissions.toLocaleString()} F
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${
+                          actor.status === 'active'
+                            ? 'bg-green-100 dark:bg-green-950/40 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-900/50'
+                            : 'bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-900/50'
+                        }`}>
+                          {actor.status === 'active' ? 'Actif' : 'Inactif'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={7} className="text-center py-10 text-gray-400 italic">
+                    Aucun acteur ne correspond aux filtres appliqués.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Creation Modal - Add Actor / Assign promo code sequence */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs px-4">
-          <div className="bg-white w-full max-w-lg rounded-3xl border border-gray-100 shadow-2xl p-6 relative overflow-hidden font-sans text-xs">
-            <button
-              onClick={() => setIsAddModalOpen(false)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-gray-600 flex items-center justify-center transition-all cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
 
-            <div className="flex items-center gap-3 border-b border-gray-150 pb-4 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
-                <Plus className="w-5 h-5 text-orange-600" />
+      {/* DETAIL DRAWER / POPUP */}
+      {selectedActorDetails && (
+        <div className="fixed inset-0 bg-gray-900/60 dark:bg-slate-950/85 backdrop-blur-xs flex items-center justify-end p-0 z-50 animate-fadeIn">
+          <div className="bg-white dark:bg-[#111c34] h-screen w-full max-w-md shadow-2xl p-6 overflow-y-auto relative animate-slideLeft text-xs flex flex-col justify-between border-l border-gray-100 dark:border-slate-800 text-gray-805 dark:text-slate-100">
+            
+            <div className="space-y-6">
+              
+              {/* Close Button Header */}
+              <div className="flex justify-between items-center pb-4 border-b border-gray-100 dark:border-slate-800 text-left">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-xl bg-[#0B5D2A]/10 text-[#0B5D2A] dark:text-green-400 flex items-center justify-center font-sans font-black">
+                    {selectedActorDetails.full_name.substring(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 className="font-display font-black text-gray-950 dark:text-white text-sm leading-tight">{selectedActorDetails.full_name}</h3>
+                    <p className="text-[10px] text-gray-400 dark:text-slate-400 capitalize">{getRoleLabel(selectedActorDetails.type_actor)} BOAF</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedActorDetails(null)}
+                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-350 flex items-center justify-center cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <div className="text-left">
-                <h3 className="font-display font-extrabold text-gray-900 text-base leading-snug">Ajouter un acteur</h3>
-                <p className="text-[11px] text-gray-400 leading-tight">Enregistrer un nouvel acteur avec attribution automatique de code de promotion unique</p>
+
+              {/* Informational Data Card */}
+              <div className="bg-slate-50 dark:bg-[#152342] p-4 rounded-2xl border border-gray-150 dark:border-slate-800 space-y-3 mb-4 text-left">
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-gray-450 uppercase font-mono font-bold tracking-wider">Téléphone d'Acteur</span>
+                  <span className="font-mono text-gray-900 font-bold">{selectedActorDetails.phone}</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-gray-450 uppercase font-mono font-bold tracking-wider">Taux de Commission</span>
+                  <span className="font-bold text-orange-650">{selectedActorDetails.commission_rate}% sur ventes</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-gray-450 uppercase font-mono font-bold tracking-wider">Secteur / Zone affecté</span>
+                  <span className="font-semibold text-gray-900">
+                    {zones.find(z => z.id === selectedActorDetails.zone_id)?.nom || 'Lokossa Zone'}
+                  </span>
+                </div>
+                {selectedActorDetails.meta?.objectif_mensuel && (
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-gray-450 uppercase font-mono font-bold tracking-wider">Objectif Mensuel</span>
+                    <span className="font-mono font-bold text-gray-900">{selectedActorDetails.meta.objectif_mensuel.toLocaleString()} FCFA</span>
+                  </div>
+                )}
               </div>
+
+              {/* Specific detailed statistics block */}
+              <div className="space-y-4 text-left">
+                <h4 className="font-display font-bold text-[#0B5D2A] text-xs uppercase tracking-wide">💼 Synthèse Économique Récente</h4>
+                
+                <div className="grid grid-cols-2 gap-3 pb-4">
+                  <div className="bg-emerald-50/50 p-3.5 rounded-xl border border-emerald-100 space-y-1">
+                    <span className="text-[10px] text-emerald-800 font-bold uppercase block font-mono">Gain Commissions</span>
+                    <span className="text-base font-black font-mono text-[#0B5D2A]">
+                      {getActorStats(selectedActorDetails).totalCommissions.toLocaleString()} F
+                    </span>
+                  </div>
+
+                  <div className="bg-orange-50/50 p-3.5 rounded-xl border border-orange-100 space-y-1">
+                    <span className="text-[10px] text-orange-900 font-bold uppercase block font-mono">Apport Ventes</span>
+                    <span className="text-base font-black font-mono text-orange-600">
+                      {getActorStats(selectedActorDetails).totalSales.toLocaleString()} F
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-[10px] uppercase font-mono text-gray-400 block font-bold">Activité de livraison liée</span>
+                  <div className="p-3 bg-white border border-gray-150 rounded-xl space-y-2 max-h-48 overflow-y-auto">
+                    {orders.filter(o => o.code_promo_text?.toUpperCase() === selectedActorDetails.main_code?.toUpperCase()).length > 0 ? (
+                      orders
+                        .filter(o => o.code_promo_text?.toUpperCase() === selectedActorDetails.main_code?.toUpperCase())
+                        .map(order => (
+                          <div key={order.id} className="flex justify-between text-[11px] py-1 border-b border-gray-50 last:border-none">
+                            <span className="text-gray-600">Ticket {order.ticket_number}</span>
+                            <span className="font-bold text-slate-800 font-mono">{order.total_net.toLocaleString()} F</span>
+                          </div>
+                        ))
+                    ) : (
+                      <p className="text-[11px] text-gray-400 italic py-3 text-center">Aucune vente directe déclarée avec ce code.</p>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
             </div>
 
-            <form onSubmit={handleCreateActor} className="space-y-4">
-              {errorText && <p className="text-[11px] text-red-600 bg-red-50 p-2.5 rounded-lg font-bold">{errorText}</p>}
+            {/* Quick close action trigger */}
+            <button
+              onClick={() => setSelectedActorDetails(null)}
+              className="w-full py-3 mt-4 bg-slate-900 text-white font-bold rounded-xl cursor-pointer"
+            >
+              Fermer le profil
+            </button>
 
-              {/* Primary Identity form group */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="font-semibold text-gray-700 block">Nom complet *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="ex. Gérard Soglo"
-                    value={newActorName}
-                    onChange={(e) => setNewActorName(e.target.value)}
-                    className="w-full p-2 border border-gray-200 bg-slate-50 rounded-xl focus:bg-white focus:outline-none"
-                  />
-                </div>
+          </div>
+        </div>
+      )}
 
-                <div className="space-y-1">
-                  <label className="font-semibold text-gray-700 block">Téléphone *</label>
-                  <input
-                    type="phone"
-                    required
-                    placeholder="ex. +229 97 12 34 56"
-                    value={newActorPhone}
-                    onChange={(e) => setNewActorPhone(e.target.value)}
-                    className="w-full p-2 border border-gray-200 bg-slate-50 rounded-xl focus:bg-white focus:outline-none"
-                  />
-                </div>
-              </div>
 
-              {/* Email */}
+      {/* FORM MODAL: REGISTER NEW ACTOR */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-gray-900/60 dark:bg-slate-950/85 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn text-xs">
+          <div className="bg-white dark:bg-[#111c34] rounded-[28px] w-full max-w-md overflow-hidden border border-gray-150 dark:border-slate-800 shadow-2xl text-left flex flex-col max-h-[90vh]">
+            
+            <div className="bg-[#0B5D2A] p-5 text-white flex justify-between items-center">
+              <h3 className="font-display font-black text-md">➕ Enregistrer un Acteur Terrain</h3>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleFormSubmit} className="p-6 space-y-4 overflow-y-auto flex-1 text-gray-800 dark:text-slate-100">
+              
               <div className="space-y-1">
-                <label className="font-semibold text-gray-700 block">Email (optionnel)</label>
+                <label className="block text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px]">Identité d'Acteur</label>
                 <input
-                  type="email"
-                  placeholder="ex. g.soglo@boaf.com"
-                  value={newActorEmail}
-                  onChange={(e) => setNewActorEmail(e.target.value)}
-                  className="w-full p-2 border border-gray-200 bg-slate-50 rounded-xl focus:bg-white focus:outline-none"
+                  type="text"
+                  required
+                  placeholder="Nom complet (ex. Sévérin Koko)"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl focus:border-[#0B5D2A] dark:focus:border-green-450 focus:outline-none text-gray-850 dark:text-slate-150"
                 />
               </div>
 
-              {/* Actor Type & Location */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1 text-left">
-                  <label className="font-semibold text-gray-700 block">Catégorie Acteur</label>
+              <div className="space-y-1">
+                <label className="block text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px]">Numéro de téléphone</label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="Téléphone (ex. +229 97 00 23)"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl focus:border-[#0B5D2A] dark:focus:border-green-450 focus:outline-none font-mono text-gray-850 dark:text-slate-150"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                
+                <div className="space-y-1 col-span-2">
+                  <label className="block text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px]">Type de profil / Rôle</label>
                   <select
-                    value={newActorType}
-                    onChange={(e) => setNewActorType(e.target.value as any)}
-                    className="w-full p-2 border border-gray-200 bg-slate-50 rounded-xl focus:outline-none cursor-pointer"
+                    value={selectedRoleType}
+                    onChange={(e) => setSelectedRoleType(e.target.value as Actor['type_actor'])}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl focus:outline-none text-gray-850 dark:text-slate-150"
                   >
-                    <option value="employee">Employé</option>
-                    <option value="agent">Agent terrain</option>
-                    <option value="partner">Partenaire</option>
-                    <option value="ambassador">Ambassadeur</option>
-                    <option value="collaborator">Collaborateur</option>
+                    <option value="agent" className="dark:bg-[#111c34]">Agent terrain (Moto-Vendeur)</option>
+                    <option value="partner" className="dark:bg-[#111c34]">Partenaire (Boulanger/Dépositaire)</option>
+                    <option value="ambassador" className="dark:bg-[#111c34]">Ambassadeur / Élève ambassadeur</option>
+                    <option value="collaborator" className="dark:bg-[#111c34]">Collaborateur BOAF</option>
+                    <option value="employee" className="dark:bg-[#111c34]">Employé permanent</option>
                   </select>
                 </div>
 
-                <div className="space-y-1 text-left">
-                  <label className="font-semibold text-gray-700 block">Zone d'Affectation</label>
+                <div className="space-y-1">
+                  <label className="block text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px]">Commission (%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    required
+                    value={commissionRate}
+                    onChange={(e) => setCommissionRate(Number(e.target.value))}
+                    className="w-full p-2 bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl focus:outline-none font-mono font-bold text-gray-850 dark:text-slate-150"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px]">Zone affectée</label>
                   <select
-                    value={newActorZone}
-                    onChange={(e) => setNewActorZone(e.target.value)}
-                    className="w-full p-2 border border-gray-200 bg-slate-50 rounded-xl focus:outline-none cursor-pointer"
+                    value={zoneId}
+                    onChange={(e) => setZoneId(e.target.value)}
+                    className="w-full p-2 bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl focus:outline-none text-gray-850 dark:text-slate-150"
                   >
                     {zones.map(z => (
-                      <option key={z.id} value={z.id}>
+                      <option key={z.id} value={z.id} className="dark:bg-[#111c34]">
                         {z.nom}
                       </option>
                     ))}
                   </select>
                 </div>
+
               </div>
 
-              {/* Rate & Target values */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="font-semibold text-gray-700 block">Taux commission par défaut (%)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="30"
-                    placeholder="e.g. 5"
-                    value={newActorRate}
-                    onChange={(e) => setNewActorRate(Number(e.target.value))}
-                    className="w-full p-2 border border-gray-200 bg-slate-50 rounded-xl"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-semibold text-gray-700 block">Objectif mensuel de vente (FCFA)</label>
-                  <input
-                    type="number"
-                    placeholder="e.g. 500000"
-                    value={newActorObjective}
-                    onChange={(e) => setNewActorObjective(Number(e.target.value))}
-                    className="w-full p-2 border border-gray-200 bg-slate-50 rounded-xl"
-                  />
-                </div>
+              <div className="space-y-1">
+                <label className="block text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px]">Code Promo Attribué automatiquement</label>
+                <input
+                  type="text"
+                  required
+                  value={assignedCodeText}
+                  onChange={(e) => setAssignedCodeText(e.target.value)}
+                  className="w-full p-2.5 bg-purple-50 dark:bg-purple-950/20 text-purple-800 dark:text-purple-300 border border-dashed border-purple-300 dark:border-purple-800 rounded-xl focus:outline-none font-mono font-bold text-center tracking-wider"
+                />
               </div>
-
-              {/* Conditional parameters based on selection */}
-              {newActorType === 'employee' && (
-                <div className="grid grid-cols-2 gap-4 bg-[#F8FAFC] p-3 rounded-2xl border border-gray-150">
-                  <div className="space-y-1">
-                    <label className="font-semibold text-gray-700 block">Poste de l'employé</label>
-                    <input
-                      type="text"
-                      placeholder="Poste occupé"
-                      value={newActorPoste}
-                      onChange={(e) => setNewActorPoste(e.target.value)}
-                      className="w-full p-1.5 border border-gray-200 bg-white rounded-lg"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="font-semibold text-gray-700 block">Service administrative</label>
-                    <input
-                      type="text"
-                      placeholder="Service"
-                      className="w-full p-1.5 border border-gray-200 bg-white rounded-lg"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {newActorType === 'agent' && (
-                <div className="space-y-1 bg-[#F8FAFC] p-3 rounded-2xl border border-[#E5E7EB] text-left">
-                  <label className="font-semibold text-gray-700 block">Type d'agent terrain</label>
-                  <select
-                    value={newActorAgentType}
-                    onChange={(e) => setNewActorAgentType(e.target.value)}
-                    className="w-full p-2 border border-gray-200 bg-white rounded-lg"
-                  >
-                    <option value="Moto-Vendeur">Moto-Vendeur</option>
-                    <option value="Bicyclette Mobile">Bicyclette Mobile</option>
-                    <option value="Kiosque Mobile">Kiosque Mobile</option>
-                  </select>
-                </div>
-              )}
-
-              {newActorType === 'ambassador' && (
-                <div className="space-y-1 bg-[#F8FAFC] p-3 rounded-2xl border border-[#E5E7EB]">
-                  <label className="font-semibold text-gray-700 block">Établissement d'enseignement (optionnel)</label>
-                  <input
-                    type="text"
-                    placeholder="Établissement"
-                    value={newActorSchool}
-                    onChange={(e) => setNewActorSchool(e.target.value)}
-                    className="w-full p-1.5 border border-gray-200 bg-white rounded-lg"
-                  />
-                </div>
-              )}
 
               <button
                 type="submit"
-                className="w-full py-3 bg-[#0B5D2A] text-white hover:bg-[#0B5D2A]/90 rounded-2xl font-bold uppercase transition-all shadow-md shadow-green-900/10 cursor-pointer"
+                className="w-full py-3.5 mt-4 bg-[#0B5D2A] hover:bg-[#12823c] text-white font-black uppercase text-xs rounded-xl shadow-md cursor-pointer transition-transform hover:scale-101 border-none"
               >
-                Créer la fiche et générer le code promo principal
+                Créer le profil et le code
               </button>
+
             </form>
+
           </div>
         </div>
       )}

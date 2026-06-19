@@ -4,11 +4,11 @@ import Header from './components/Header';
 import DashboardView from './components/DashboardView';
 import ActorsView from './components/ActorsView';
 import SalesView from './components/SalesView';
-import VerifyCodeView from './components/VerifyCodeView';
+import PromoCodesView from './components/PromoCodesView';
 import AttendanceView from './components/AttendanceView';
-import CommissionsView from './components/CommissionsView';
 import ReportsView from './components/ReportsView';
 import SettingsView from './components/SettingsView';
+import ProductsCatalogView from './components/ProductsCatalogView';
 
 import { getStoredData, saveToStoredData, DEFAULT_ZONES, DEFAULT_ACTORS, DEFAULT_PRODUCTS, DEFAULT_PROMO_CODES, DEFAULT_ORDERS, DEFAULT_COMMISSIONS, DEFAULT_ATTENDANCE_LOGS, DEFAULT_PROSPECTS, DEFAULT_ACTIVITY_LOGS } from './mockData';
 import { Actor, Zone, PromoCode, Product, Order, Commission, AttendanceLog, Prospect, ActivityLog, CommissionStatus } from './types';
@@ -20,6 +20,20 @@ export default function App() {
   // RBAC permissions simulation states
   const [currentRole, setCurrentRole] = useState<string>('admin');
   const [currentUser, setCurrentUser] = useState<string>('Jean Doussou');
+
+  // Dark Mode State
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => localStorage.getItem('isDarkMode') === 'true');
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
+    }
+    localStorage.setItem('isDarkMode', String(isDarkMode));
+  }, [isDarkMode]);
 
   // Load state storage database
   const [db, setDb] = useState(() => getStoredData());
@@ -89,7 +103,7 @@ export default function App() {
       const codeRecord = db.promoCodes.find(pc => pc.id === newOrder.code_promo_id);
       if (codeRecord) {
         const beneficiaryActor = db.actors.find(a => a.id === codeRecord.actor_id);
-        if (beneficiaryActor && beneficiaryActor.status === 'active') {
+        if (beneficiaryActor && beneficiaryActor.status === 'active' && codeRecord.status === 'active') {
           const ratePercent = beneficiaryActor.commission_rate || 5;
           const commissionVal = Math.round(newOrder.total_net * (ratePercent / 100));
 
@@ -197,6 +211,8 @@ export default function App() {
             attendanceLogs={db.attendanceLogs}
             activityLogs={db.activityLogs}
             onNavigate={(tab) => setActiveTab(tab)}
+            currentRole={currentRole}
+            currentUser={currentUser}
           />
         );
       case 'actors':
@@ -225,14 +241,25 @@ export default function App() {
             currentRole={currentRole}
           />
         );
-      case 'verify':
+      case 'promo_codes':
         return (
-          <VerifyCodeView
-            actors={db.actors}
+          <PromoCodesView
             promoCodes={db.promoCodes}
+            actors={db.actors}
             orders={db.orders}
             commissions={db.commissions}
             zones={db.zones}
+            onAddPromoCode={handleAddPromoCode}
+            onUpdatePromoCode={(updatedCodes) => saveDb({ ...db, promoCodes: updatedCodes })}
+            currentRole={currentRole}
+          />
+        );
+      case 'products':
+        return (
+          <ProductsCatalogView
+            products={db.products}
+            onUpdateProducts={handleUpdateProducts}
+            currentRole={currentRole}
           />
         );
       case 'attendance':
@@ -246,14 +273,6 @@ export default function App() {
             currentRole={currentRole}
           />
         );
-      case 'commissions':
-        return (
-          <CommissionsView
-            commissions={db.commissions}
-            onUpdateCommissionStatus={handleUpdateCommissionStatus}
-            currentRole={currentRole}
-          />
-        );
       case 'reports':
         return (
           <ReportsView
@@ -262,6 +281,8 @@ export default function App() {
             zones={db.zones}
             commissions={db.commissions}
             attendanceLogs={db.attendanceLogs}
+            onUpdateCommissionStatus={handleUpdateCommissionStatus}
+            currentRole={currentRole}
           />
         );
       case 'settings':
@@ -282,10 +303,10 @@ export default function App() {
   };
 
   return (
-    <div className="flex bg-[#F8FAFC] min-h-screen text-slate-800">
+    <div className="flex bg-[#F8FAFC] dark:bg-[#0b1329] min-h-screen text-slate-800 dark:text-slate-100 transition-colors duration-250">
       
       {/* 1. Fixed Left sidebar menu panel */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} orders={db.orders} />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} orders={db.orders} currentRole={currentRole} />
 
       {/* 2. Main content container sliding */}
       <div className="flex-1 flex flex-col pl-68 min-w-0 min-h-screen">
@@ -296,6 +317,8 @@ export default function App() {
           setCurrentRole={setCurrentRole}
           currentUser={currentUser}
           setCurrentUser={setCurrentUser}
+          isDarkMode={isDarkMode}
+          toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
         />
 
         {/* 2b. Scrollable views container area */}

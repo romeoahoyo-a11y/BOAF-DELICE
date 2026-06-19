@@ -11,14 +11,14 @@ export const DEFAULT_ZONES: Zone[] = [
 
 // Benchmark Products
 export const DEFAULT_PRODUCTS: Product[] = [
-  { id: 'p1', nom: 'Pain sucré Premium', categorie: 'Pain', prix: 150, marge_estimee: 45, actif: true },
-  { id: 'p2', nom: 'Pain ordinaire', categorie: 'Pain', prix: 125, marge_estimee: 35, actif: true },
-  { id: 'p3', nom: 'Formule Petit-Déjeuner complet', categorie: 'Gouter', prix: 1500, marge_estimee: 40, actif: true },
-  { id: 'p4', nom: 'Goûter Scolaire Deluxe', categorie: 'Gouter', prix: 500, marge_estimee: 50, actif: true },
-  { id: 'p5', nom: 'Repas du Jour chaud', categorie: 'Repas', prix: 2000, marge_estimee: 42, actif: true },
-  { id: 'p6', nom: 'Pâtisserie Événementielle (Part)', categorie: 'Patisserie', prix: 1200, marge_estimee: 55, actif: true },
-  { id: 'p7', nom: 'Prestation Traiteur (par convive)', categorie: 'Traiteur', prix: 5000, marge_estimee: 38, actif: true },
-  { id: 'p8', nom: 'Nuitée Hébergement Éco-Gîte', categorie: 'Hebergement', prix: 15000, marge_estimee: 60, actif: true }
+  { id: 'p1', nom: 'Pain sucré Premium', categorie: 'Pain', prix: 150, marge_estimee: 45, actif: true, description: 'Le célèbre pain sucré BOAF moelleux et doré au four traditionnel.', image_url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&auto=format&fit=crop&q=80', disponibilite: 'disponible', show_in_catalog: true, created_at: '2026-01-01T08:00:00Z', updated_at: '2026-06-19T08:00:00Z' },
+  { id: 'p2', nom: 'Pain ordinaire croustillant', categorie: 'Pain', prix: 125, marge_estimee: 35, actif: true, description: 'Pain de table traditionnel, croustillant et parfait pour le petit-déjeuner.', image_url: 'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?w=400&auto=format&fit=crop&q=80', disponibilite: 'disponible', show_in_catalog: true, created_at: '2026-01-01T08:00:00Z', updated_at: '2026-06-19T08:00:00Z' },
+  { id: 'p3', nom: 'Jus d’Ananas local pur', categorie: 'Jus', prix: 500, marge_estimee: 50, actif: true, description: 'Jus d’ananas pressé sans eau ajoutée ni conservateur, issu des cultures de Lokossa.', image_url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=400&auto=format&fit=crop&q=80', disponibilite: 'disponible', show_in_catalog: true, created_at: '2026-01-10T09:00:00Z', updated_at: '2026-06-19T08:00:00Z' },
+  { id: 'p4', nom: 'Croissant au Beurre frais', categorie: 'Pâtisserie', prix: 400, marge_estimee: 45, actif: true, description: 'Pur beurre de baratte, feuilletage croustillant façonné à la main.', image_url: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&auto=format&fit=crop&q=80', disponibilite: 'disponible', show_in_catalog: true, created_at: '2026-02-15T08:00:00Z', updated_at: '2026-06-19T08:00:00Z' },
+  { id: 'p5', nom: 'Plat de Riz au Gras traditionnel', categorie: 'Repas', prix: 2000, marge_estimee: 42, actif: true, description: 'Riz parfumé mijoté aux épices locales, servi avec du poulet braisé tendre.', image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&auto=format&fit=crop&q=80', disponibilite: 'disponible', show_in_catalog: true, created_at: '2026-03-01T12:00:00Z', updated_at: '2026-06-19T08:00:00Z' },
+  { id: 'p6', nom: 'Gâteau d’Anniversaire Chocolat', categorie: 'Pâtisserie', prix: 15000, marge_estimee: 55, actif: true, description: 'Moelleux chocolat noir intense avec glaçage miroir personnalisé sur commande.', image_url: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&auto=format&fit=crop&q=80', disponibilite: 'disponible', show_in_catalog: true, created_at: '2026-04-01T10:00:00Z', updated_at: '2026-06-19T08:00:00Z' },
+  { id: 'p7', nom: 'Cocktail de Goûters assortis', categorie: 'Offre spéciale', prix: 3500, marge_estimee: 40, actif: true, description: 'Assortiment de 10 gâteaux, pains sucrés miniatures et jus de fruits.', image_url: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=400&auto=format&fit=crop&q=80', disponibilite: 'disponible', show_in_catalog: true, created_at: '2026-05-01T08:00:00Z', updated_at: '2026-06-19T08:00:00Z' },
+  { id: 'p8', nom: 'Séjour Éco-Gîte Lokossa (1 Nuit)', categorie: 'Hébergement', prix: 15000, marge_estimee: 60, actif: true, description: 'Chambre double confortable ventilée au cœur d’une nature préservée à Lokossa.', image_url: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&auto=format&fit=crop&q=80', disponibilite: 'disponible', show_in_catalog: true, created_at: '2026-01-01T08:00:00Z', updated_at: '2026-06-19T08:00:00Z' }
 ];
 
 // Reusable names for actors in South West Benin
@@ -240,12 +240,125 @@ seedSales();
 
 // 7 Days Attendance Log database for agent_id listed in DEFAULT_ACTORS
 export const DEFAULT_ATTENDANCE_LOGS: AttendanceLog[] = [
+  // Missions for Today: 2026-06-03
+  {
+    id: 'att-today-1',
+    agent_id: 'act-agt-01',
+    agent_name: 'Eric Adjovi',
+    agent_code: 'BOAF-AGT-0234',
+    date: '2026-06-03',
+    start_time_prevu: '08:00',
+    end_time_prevu: '16:00',
+    status: 'in_progress', // Mission en cours
+    zone_id: 'z1',
+    zone_name: 'Lokossa Centre',
+    lieu_precis: 'Carrefour Central de Lokossa',
+    objectif: 'Vente directe & Prospection',
+    produits_presentes: ['Pain sucré Premium', 'Pain ordinaire'],
+    code_promo_lie: 'BOAF-AGT-0234',
+    checkin_at: '2026-06-03T07:55:00Z',
+    lat_in: 6.6433,
+    lng_in: 1.7167,
+    note: 'Arrivé avec vélo garni de pains frais, forte demande près des banques.',
+    contacts_count: 14,
+    ventes_count: 28,
+    montant_vendu: 15200,
+    difficulties: 'Léger vent de poussière le matin.'
+  },
+  {
+    id: 'att-today-2',
+    agent_id: 'act-agt-02',
+    agent_name: 'Grace Houngbédji',
+    agent_code: 'BOAF-AGT-0235',
+    date: '2026-06-03',
+    start_time_prevu: '08:30',
+    end_time_prevu: '17:00',
+    status: 'arrived', // Je suis arrivé
+    zone_id: 'z2',
+    zone_name: 'Agamé',
+    lieu_precis: 'Grand Marché d\'Agamé',
+    objectif: 'Distribution de prospectus & Vente',
+    produits_presentes: ['Formule Petit-Déjeuner complet'],
+    code_promo_lie: 'BOAF-AGT-0235',
+    checkin_at: '2026-06-03T08:25:00Z',
+    lat_in: 6.6789,
+    lng_in: 1.6321,
+    note: 'Installation du stand promotionnel terminée. Distribution en cours.',
+    contacts_count: 5,
+    ventes_count: 0,
+    montant_vendu: 0
+  },
+  {
+    id: 'att-today-3',
+    agent_id: 'act-agt-03',
+    agent_name: 'Felicien Gbaguidi',
+    agent_code: 'BOAF-AGT-0236',
+    date: '2026-06-03',
+    start_time_prevu: '09:00',
+    end_time_prevu: '15:00',
+    status: 'completed', // Mission terminée
+    zone_id: 'z3',
+    zone_name: 'Houinvié',
+    lieu_precis: 'Collège de Houinvié',
+    objectif: 'Promotion d’un produit',
+    produits_presentes: ['Goûter Scolaire Deluxe'],
+    code_promo_lie: 'BOAF-AGT-0236',
+    checkin_at: '2026-06-03T08:50:00Z',
+    checkout_at: '2026-06-03T15:10:00Z',
+    lat_in: 6.6212,
+    lng_in: 1.7345,
+    note: 'Forte affluence d\'élèves durant la récréation de 10h. Tout le stock est écoulé.',
+    contacts_count: 42,
+    ventes_count: 65,
+    montant_vendu: 32500,
+    difficulties: 'Rupture de stock de jus de fruits dès 11h.'
+  },
+  {
+    id: 'att-today-4',
+    agent_id: 'act-agt-04',
+    agent_name: 'Juliette Keke',
+    agent_code: 'BOAF-AGT-0237',
+    date: '2026-06-03',
+    start_time_prevu: '08:00',
+    end_time_prevu: '16:00',
+    status: 'postponed', // Mission reportée
+    zone_id: 'z4',
+    zone_name: 'Ouèdèmè',
+    lieu_precis: 'Église Protestante de Ouèdèmè',
+    objectif: 'Suivi partenaire',
+    produits_presentes: ['Prestation Traiteur (par convive)'],
+    code_promo_lie: 'BOAF-AGT-0237',
+    note: 'Le Pasteur est absent pour un synode d\'urgence à Cotonou.',
+    difficulties: 'Pasteur absent. Mission reprogrammée à samedi matin.'
+  },
+  {
+    id: 'att-today-5',
+    agent_id: 'act-agt-05',
+    agent_name: 'Christian Lokossou',
+    agent_code: 'BOAF-AGT-0238',
+    date: '2026-06-03',
+    start_time_prevu: '08:00',
+    end_time_prevu: '12:00',
+    status: 'absent', // Absent
+    zone_id: 'z5',
+    zone_name: 'Athiémé Centre',
+    lieu_precis: 'Mairie d\'Athiémé',
+    objectif: 'Collecte de contacts',
+    produits_presentes: ['Repas du Jour chaud'],
+    code_promo_lie: 'BOAF-AGT-0238',
+    note: 'Maladie déclarée ce matin.',
+    difficulties: 'Forte fièvre signalée ce matin par téléphone. Remplaçant indisponible.'
+  },
+
+  // Historic logged missions
   {
     id: 'att-1',
     agent_id: 'act-agt-01',
     agent_name: 'Eric Adjovi',
     agent_code: 'BOAF-AGT-0234',
     date: '2026-05-28',
+    start_time_prevu: '08:00',
+    end_time_prevu: '16:00',
     checkin_at: '2026-05-28T07:45:00Z',
     checkout_at: '2026-05-28T16:00:00Z',
     lat_in: 6.6433,
@@ -253,10 +366,17 @@ export const DEFAULT_ATTENDANCE_LOGS: AttendanceLog[] = [
     lat_out: 6.6429,
     lng_out: 1.7155,
     accuracy_m: 8.5,
-    status: 'present',
+    status: 'present', // treated as present / completed
     zone_id: 'z1',
     zone_name: 'Lokossa Centre',
-    note: 'Arrivé sur site avec vélo garni de pains frais'
+    lieu_precis: 'Administration publique Lokossa',
+    objectif: 'Vente directe',
+    produits_presentes: ['Pain sucré Premium', 'Pain ordinaire'],
+    code_promo_lie: 'BOAF-AGT-0234',
+    note: 'Arrivé sur site avec vélo garni de pains frais.',
+    contacts_count: 8,
+    ventes_count: 24,
+    montant_vendu: 12400
   },
   {
     id: 'att-2',
@@ -264,6 +384,8 @@ export const DEFAULT_ATTENDANCE_LOGS: AttendanceLog[] = [
     agent_name: 'Grace Houngbédji',
     agent_code: 'BOAF-AGT-0235',
     date: '2026-05-28',
+    start_time_prevu: '08:30',
+    end_time_prevu: '17:30',
     checkin_at: '2026-05-28T08:15:00Z',
     checkout_at: '2026-05-28T17:30:00Z',
     lat_in: 6.6789,
@@ -274,7 +396,13 @@ export const DEFAULT_ATTENDANCE_LOGS: AttendanceLog[] = [
     status: 'present',
     zone_id: 'z2',
     zone_name: 'Agamé',
-    note: 'Vente auprès des écoles primaires de la localité'
+    lieu_precis: 'Écoles d\'Agamé',
+    objectif: 'Distribution de prospectus',
+    code_promo_lie: 'BOAF-AGT-0235',
+    note: 'Vente auprès des écoles primaires de la localité.',
+    contacts_count: 15,
+    ventes_count: 30,
+    montant_vendu: 15000
   },
   {
     id: 'att-3',
@@ -282,6 +410,8 @@ export const DEFAULT_ATTENDANCE_LOGS: AttendanceLog[] = [
     agent_name: 'Felicien Gbaguidi',
     agent_code: 'BOAF-AGT-0236',
     date: '2026-05-29',
+    start_time_prevu: '08:00',
+    end_time_prevu: '16:00',
     checkin_at: '2026-05-29T09:12:00Z', // Late
     checkout_at: '2026-05-29T16:30:00Z',
     lat_in: 6.6212,
@@ -292,69 +422,14 @@ export const DEFAULT_ATTENDANCE_LOGS: AttendanceLog[] = [
     status: 'late',
     zone_id: 'z3',
     zone_name: 'Houinvié',
-    note: 'Retard suite à un incident technique de kiosque'
-  },
-  {
-    id: 'att-4',
-    agent_id: 'act-agt-04',
-    agent_name: 'Juliette Keke',
-    agent_code: 'BOAF-AGT-0237',
-    date: '2026-05-29',
-    checkin_at: '2026-05-29T07:55:00Z',
-    checkout_at: '2026-05-29T15:45:00Z',
-    lat_in: 6.6690, // Out of zone coordinate (Agamé boundary)
-    lng_in: 1.6521,
-    accuracy_m: 23.4,
-    status: 'out_of_zone',
-    zone_id: 'z4',
-    zone_name: 'Ouèdèmè',
-    note: 'A débuté plus à l\'ouest pour intercepter un marché de troc'
-  },
-  {
-    id: 'att-5',
-    agent_id: 'act-agt-05',
-    agent_name: 'Christian Lokossou',
-    agent_code: 'BOAF-AGT-0238',
-    date: '2026-05-30',
-    checkin_at: '2026-05-30T08:00:00Z',
-    checkout_at: undefined, // Not closed
-    lat_in: 6.5786,
-    lng_in: 1.6702,
-    accuracy_m: 15.0,
-    status: 'not_closed',
-    zone_id: 'z5',
-    zone_name: 'Athiémé Centre',
-    note: 'Mission intense fleuve'
-  },
-  {
-    id: 'att-6',
-    agent_id: 'act-agt-06',
-    agent_name: 'Gisèle Agbo',
-    agent_code: 'BOAF-AGT-0239',
-    date: '2026-06-01',
-    checkin_at: '2026-06-01T07:45:00Z',
-    checkout_at: '2026-06-01T15:58:00Z',
-    lat_in: 6.6433,
-    lng_in: 1.7167,
-    accuracy_m: 5.0,
-    status: 'present',
-    zone_id: 'z1',
-    zone_name: 'Lokossa Centre'
-  },
-  {
-    id: 'att-7',
-    agent_id: 'act-agt-07',
-    agent_name: 'Hubert Tossou',
-    agent_code: 'BOAF-AGT-0240',
-    date: '2026-06-02',
-    checkin_at: '2026-06-02T08:05:00Z',
-    checkout_at: '2026-06-02T17:00:00Z',
-    lat_in: 6.6789,
-    lng_in: 1.6321,
-    accuracy_m: 6.2,
-    status: 'present',
-    zone_id: 'z2',
-    zone_name: 'Agamé'
+    lieu_precis: 'Carrefour Houinvié',
+    objectif: 'Vente directe',
+    code_promo_lie: 'BOAF-AGT-0236',
+    note: 'Retard suite à un incident technique de kiosque mobile.',
+    contacts_count: 6,
+    ventes_count: 14,
+    montant_vendu: 7500,
+    difficulties: 'Pneu crevé sur le trajet.'
   }
 ];
 

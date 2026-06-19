@@ -2,19 +2,19 @@ import React, { useState } from 'react';
 import {
   Receipt,
   ShoppingCart,
-  QrCode,
+  PlusCircle,
   Tag,
-  Plus,
-  Minus,
-  RefreshCw,
   Search,
   User,
-  Activity,
-  Trash2,
   CheckCircle,
-  FileText
+  FileText,
+  X,
+  Printer,
+  Smartphone,
+  Sparkles,
+  ArrowRight
 } from 'lucide-react';
-import { Order, Product, PromoCode, Actor, OrderItem, Commission } from '../types';
+import { Order, Product, PromoCode, Actor, OrderItem } from '../types';
 
 interface SalesViewProps {
   orders: Order[];
@@ -23,7 +23,7 @@ interface SalesViewProps {
   actors: Actor[];
   onAddOrder: (order: Order) => void;
   onAddPromoCode: (code: PromoCode) => void;
-  currentRole: string; // admin, superviseur, whatsapp
+  currentRole: string;
 }
 
 export default function SalesView({
@@ -35,583 +35,549 @@ export default function SalesView({
   onAddPromoCode,
   currentRole
 }: SalesViewProps) {
-  // Live State of order cart in development
+  
+  // States
+  const [showNewSaleModal, setShowNewSaleModal] = useState(false);
+  const [showTicketModal, setShowTicketModal] = useState(false);
+  const [lastCreatedOrder, setLastCreatedOrder] = useState<Order | null>(null);
+
+  // Form states
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState<Product>(products[0]);
-  const [quantity, setQuantity] = useState(1);
-  const [selectedCodeId, setSelectedCodeId] = useState('none');
+  const [selectedProductId, setSelectedProductId] = useState(products[0]?.id || '');
+  const [qty, setQty] = useState(1);
+  const [customPrice, setCustomPrice] = useState<number | ''>(''); // allowing manual overrides of amount as requested
+  const [selectedPromoCodeId, setSelectedPromoCodeId] = useState('none');
   const [paymentMode, setPaymentMode] = useState('Espèces');
-  const [source, setSource] = useState('Direct');
-  
-  // Cart items
-  const [cartItems, setCartItems] = useState<OrderItem[]>([]);
 
-  // Promo Code Generator states
-  const [genTypeCode, setGenTypeCode] = useState('BOAF-ECO'); // schools
-  const [genActorId, setGenActorId] = useState(actors[0]?.id || '');
-  const [generatedResult, setGeneratedResult] = useState('');
+  // Search filter for recent orders listing
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Cart helper functions
-  const handleAddToCart = () => {
-    if (!selectedProduct) return;
-    const existingIndex = cartItems.findIndex(i => i.product_id === selectedProduct.id);
+  // Auto-detect price when product changes
+  const activeProduct = products.find(p => p.id === selectedProductId) || products[0];
 
-    if (existingIndex > -1) {
-      const updated = [...cartItems];
-      updated[existingIndex].quantite += quantity;
-      updated[existingIndex].total_ligne = updated[existingIndex].quantite * updated[existingIndex].prix_unitaire;
-      setCartItems(updated);
-    } else {
-      const newItem: OrderItem = {
-        product_id: selectedProduct.id,
-        nom: selectedProduct.nom,
-        quantite: quantity,
-        prix_unitaire: selectedProduct.prix,
-        total_ligne: quantity * selectedProduct.prix
-      };
-      setCartItems([...cartItems, newItem]);
+  const handleProductChange = (id: string) => {
+    setSelectedProductId(id);
+    const prod = products.find(p => p.id === id);
+    if (prod) {
+      setCustomPrice(prod.prix);
     }
-    // reset current input qty
-    setQuantity(1);
   };
 
-  const handleRemoveFromCart = (index: number) => {
-    setCartItems(cartItems.filter((_, i) => i !== index));
-  };
+  // Initialize price on mount/open
+  React.useEffect(() => {
+    if (activeProduct && customPrice === '') {
+      setCustomPrice(activeProduct.prix);
+    }
+  }, [activeProduct]);
 
-  // Compute live cart aggregates
-  const totalBrut = cartItems.reduce((acc, curr) => acc + curr.total_ligne, 0);
-  
-  // Find discounts matching promo code
-  const chosenPromoCode = promoCodes.find(c => c.id === selectedCodeId);
-  const discountRate = chosenPromoCode && chosenPromoCode.status === 'active' ? 5 : 0; // 5% default discount on codes
-  const remise = Math.round(totalBrut * (discountRate / 100));
-  const totalNet = totalBrut - remise;
+  // Calculations
+  const unitPrice = customPrice !== '' ? Number(customPrice) : (activeProduct?.prix || 0);
+  const totalBrut = unitPrice * qty;
 
-  // Generate sequence tracking
-  const nextTicketNumber = () => {
-    const today = new Date();
-    const yyyymmdd = today.toISOString().split('T')[0].replace(/-/g, '');
-    const relevantCount = orders.filter(o => o.ticket_number.includes(yyyymmdd)).length + 1;
-    return `TK-${yyyymmdd}-${String(relevantCount).padStart(6, '0')}`;
-  };
+  const activePromoCode = promoCodes.find(pc => pc.id === selectedPromoCodeId);
+  const discountRate = activePromoCode && activePromoCode.status === 'active' ? 5 : 0; // 5% standard code promo discount
+  const discountVal = Math.round(totalBrut * (discountRate / 100));
+  const totalNet = totalBrut - discountVal;
 
-  const [simulatedTicketNum, setSimulatedTicketNum] = useState(nextTicketNumber());
-
-  // Handle Order submit
-  const handleSaveOrder = (e: React.FormEvent) => {
+  const handleGenerateTicket = (e: React.FormEvent) => {
     e.preventDefault();
-    if (cartItems.length === 0) {
-      alert('Veuillez ajouter au moins un produit au panier avant de valider la vente.');
+    
+    if (!selectedProductId) {
+      alert('Veuillez sélectionner un produit BOAF.');
       return;
     }
 
-    const tNum = nextTicketNumber();
+    const today = new Date();
+    const yyyymmdd = today.toISOString().split('T')[0].replace(/-/g, '');
+    const todayCount = orders.filter(o => o.ticket_number.includes(yyyymmdd)).length + 1;
+    const computedTicketNum = `TK-${yyyymmdd}-${String(todayCount).padStart(4, '0')}`;
 
-    const createdOrder: Order = {
-      id: `ord-${Date.now()}`,
-      ticket_number: tNum,
+    const item: OrderItem = {
+      product_id: selectedProductId,
+      nom: activeProduct?.nom || 'Pain BOAF',
+      quantite: qty,
+      prix_unitaire: unitPrice,
+      total_ligne: totalBrut
+    };
+
+    const newOrder: Order = {
+      id: `ord-dyn-${Date.now()}`,
+      ticket_number: computedTicketNum,
       customer_name: customerName || 'Client de Passage',
       customer_phone: customerPhone || undefined,
-      code_promo_id: selectedCodeId !== 'none' ? selectedCodeId : undefined,
-      code_promo_text: chosenPromoCode?.code,
-      items: cartItems,
+      code_promo_id: selectedPromoCodeId !== 'none' ? selectedPromoCodeId : undefined,
+      code_promo_text: activePromoCode?.code,
+      items: [item],
       total_brut: totalBrut,
-      remise: remise,
+      remise: discountVal,
       total_net: totalNet,
-      payment_status: 'paid', // Instant sale is paid by default
+      payment_status: 'paid',
       order_status: 'valid',
       payment_mode: paymentMode,
-      source: source,
+      source: currentRole === 'agent' ? 'Terrain' : 'Direct',
       created_by: currentRole,
       created_at: new Date().toISOString()
     };
 
-    onAddOrder(createdOrder);
+    onAddOrder(newOrder);
 
-    // Reset Form
-    setCartItems([]);
+    // Save for visual popup ticket
+    setLastCreatedOrder(newOrder);
+    setShowNewSaleModal(false);
+    setShowTicketModal(true);
+
+    // Reset Form fields
     setCustomerName('');
     setCustomerPhone('');
-    setSelectedCodeId('none');
-    setSimulatedTicketNum(nextTicketNumber());
-    alert(`Vente de ${totalNet.toLocaleString()} FCFA validée ! Ticket ${tNum} généré.`);
+    setQty(1);
+    setSelectedPromoCodeId('none');
+    if (products[0]) {
+      setSelectedProductId(products[0].id);
+      setCustomPrice(products[0].prix);
+    }
   };
 
-  // Promo code direct generation
-  const handleGeneratePromoCode = () => {
-    const sequence = Math.floor(1000 + Math.random() * 9000);
-    const nextCode = `${genTypeCode}-${sequence}`;
-    
-    const newCode: PromoCode = {
-      id: `code-gen-${Date.now()}`,
-      code: nextCode,
-      type_code: genTypeCode,
-      actor_id: genActorId,
-      status: 'active',
-      starts_at: new Date().toISOString().split('T')[0],
-      created_at: new Date().toISOString().split('T')[0]
-    };
-
-    onAddPromoCode(newCode);
-    setGeneratedResult(nextCode);
-  };
+  // Filter local sales lists
+  const filteredRecentOrders = orders.filter(o => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      o.ticket_number.toLowerCase().includes(q) ||
+      o.customer_name.toLowerCase().includes(q) ||
+      (o.code_promo_text && o.code_promo_text.toLowerCase().includes(q))
+    );
+  });
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 text-left">
       
-      {/* Upper Grid panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      {/* Upper header section */}
+      <div className="bg-white dark:bg-[#121c33] p-6 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-colors">
+        <div>
+          <h2 className="text-xl font-display font-black text-[#0B5D2A] dark:text-green-400 flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-orange-500" />
+            Enregistrement des Ventes (Caisse Directe)
+          </h2>
+          <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-normal">
+            Saisissez les ventes réalisées sur l'instant, configurez les remises de code promo et générez immédiatement les reçus scannables de livraison.
+          </p>
+        </div>
         
-        {/* Box 1: Save Vente Form */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xs lg:col-span-2 space-y-6">
-          <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
-            <ShoppingCart className="w-5 h-5 text-orange-500 animate-pulse" />
-            <h3 className="font-display font-extrabold text-[#0B5D2A] text-base leading-none">
-              Enregistrer une Vente
+        <button
+          onClick={() => {
+            if (products.length > 0) {
+              setSelectedProductId(products[0].id);
+              setCustomPrice(products[0].prix);
+            }
+            setShowNewSaleModal(true);
+          }}
+          className="px-6 py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-black text-xs uppercase tracking-wide rounded-2xl flex items-center gap-2 shadow-md hover:scale-101 transition-all cursor-pointer shrink-0"
+        >
+          <PlusCircle className="w-4.5 h-4.5" />
+          Nouvelle vente
+        </button>
+      </div>
+
+      {/* Main List view table */}
+      <div className="bg-white dark:bg-[#121c33] p-6 rounded-3xl border border-gray-150 dark:border-slate-800 shadow-2xs space-y-4 transition-colors">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+          <div>
+            <h3 className="font-display font-bold text-gray-950 dark:text-white text-sm">
+              📋 Historique des ventes de pains et goûters
             </h3>
+            <p className="text-[11px] text-gray-400 dark:text-slate-500">Cliquez sur un ticket pour rééditer son reçu BOAF</p>
           </div>
 
-          <form onSubmit={handleSaveOrder} className="space-y-5 text-xs text-left">
-            {/* Client Coordinates */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="font-semibold text-gray-700 block">Nom du Client</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Nom complet ou établissement"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 border border-gray-200 bg-slate-50 focus:bg-white rounded-xl focus:outline-none"
-                  />
-                </div>
-              </div>
+          <div className="relative max-w-xs w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
+            <input
+              type="text"
+              placeholder="Rechercher ticket, client, code..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-[#0B5D2A] dark:focus:border-green-450 text-gray-800 dark:text-slate-100 transition-colors"
+            />
+          </div>
+        </div>
 
-              <div className="space-y-1">
-                <label className="font-semibold text-gray-700 block">Téléphone Portable (WhatsApp)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. +229 97 121 212"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  className="w-full p-2 border border-gray-200 bg-slate-50 focus:bg-white rounded-xl focus:outline-none"
-                />
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 text-gray-450 dark:text-slate-400 uppercase font-mono tracking-wider text-[10px]">
+                <th className="py-3 px-4">Ticket</th>
+                <th className="py-3 px-4">Date / Heure</th>
+                <th className="py-3 px-4">Client</th>
+                <th className="py-3 px-4">Produits vendus</th>
+                <th className="py-3 px-4 text-center">Code Promo</th>
+                <th className="py-3 px-4 text-right">Total Net</th>
+                <th className="py-3 px-4 text-center">Règlement</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+              {filteredRecentOrders.length > 0 ? (
+                filteredRecentOrders.map(order => (
+                  <tr
+                    key={order.id}
+                    onClick={() => {
+                      setLastCreatedOrder(order);
+                      setShowTicketModal(true);
+                    }}
+                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors cursor-pointer border-b border-gray-100 dark:border-slate-800/40"
+                    title="Voir le ticket BOAF"
+                  >
+                    <td className="py-3.5 px-4 font-mono font-bold text-[#0B5D2A] dark:text-green-400">
+                      {order.ticket_number}
+                    </td>
+                    <td className="py-3.5 px-4 text-gray-400 dark:text-slate-400 font-mono">
+                      {new Date(order.created_at).toLocaleDateString('fr-FR')} • {new Date(order.created_at).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}
+                    </td>
+                    <td className="py-3.5 px-4 font-bold text-gray-900 dark:text-slate-100 font-sans">
+                      {order.customer_name}
+                      {order.customer_phone && <span className="block text-[10px] text-gray-400 dark:text-slate-500 font-mono font-normal">{order.customer_phone}</span>}
+                    </td>
+                    <td className="py-3.5 px-4 text-gray-700 dark:text-slate-300">
+                      {order.items.map(it => `${it.nom} (x${it.quantite})`).join(', ')}
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      {order.code_promo_text ? (
+                        <span className="bg-purple-100 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-purple-250 dark:border-purple-900/60 font-mono">
+                          {order.code_promo_text}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 dark:text-slate-500 italic">Vente directe</span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4 text-right font-black text-gray-950 dark:text-white font-mono">
+                      {order.total_net.toLocaleString()} F
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <span className="bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 border border-sky-100 dark:border-sky-900/55 text-[10px] font-semibold px-2 py-0.5 rounded">
+                        {order.payment_mode}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="text-center py-10 text-gray-400 dark:text-slate-500 italic">
+                    Aucune vente enregistrée avec ces critères de recherche.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+
+      {/* MODAL 1: SHORT NEW SALE FORM */}
+      {showNewSaleModal && (
+        <div className="fixed inset-0 bg-gray-905/60 dark:bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white dark:bg-[#111c34] rounded-[28px] w-full max-w-md overflow-hidden border border-gray-100 dark:border-slate-800 shadow-2xl scale-up text-left flex flex-col max-h-[90vh]">
+            
+            {/* Modal header */}
+            <div className="bg-[#0B5D2A] p-5 text-white flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="w-5 h-5 text-orange-400" />
+                <h3 className="font-display font-black text-md">📝 Saisir une Vente Directe</h3>
               </div>
+              <button
+                onClick={() => setShowNewSaleModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            {/* Product selection cart engine */}
-            <div className="bg-slate-50/70 p-4 rounded-2xl border border-gray-150 space-y-4">
-              <h4 className="font-bold text-[#0B5D2A] flex items-center gap-1.5 font-display text-[11px] uppercase tracking-wider">
-                Sélection des produits BOAF
-              </h4>
+            {/* Modal Scrollable body form */}
+            <form onSubmit={handleGenerateTicket} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs text-gray-800 dark:text-slate-100">
               
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="flex-1 min-w-44 space-y-1">
-                  <label className="text-gray-500 text-[10px] block">Produit</label>
+              {/* Customer tracking */}
+              <div className="space-y-1">
+                <label className="block text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px]">1. Identité du Client</label>
+                <input
+                  type="text"
+                  placeholder="Nom complet (ex. Marc Adjovi)"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl font-medium focus:outline-none focus:border-[#0B5D2A] dark:focus:border-green-450 text-gray-800 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-550 transition-colors"
+                />
+              </div>
+
+              {/* Customer Phone */}
+              <div className="space-y-1">
+                <label className="block text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px]">Téléphone du Client (Facultatif)</label>
+                <input
+                  type="tel"
+                  placeholder="Téléphone (ex. +229 97 12 12)"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl font-mono focus:outline-none focus:border-[#0B5D2A] dark:focus:border-green-450 text-gray-800 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-550 transition-colors"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                
+                {/* Product picker */}
+                <div className="space-y-1 col-span-2">
+                  <label className="block text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px]">2. Produit Boulanger</label>
                   <select
-                    value={selectedProduct?.id}
-                    onChange={(e) => {
-                      const prod = products.find(p => p.id === e.target.value);
-                      if (prod) setSelectedProduct(prod);
-                    }}
-                    className="w-full p-2 border border-gray-200 bg-white rounded-xl text-xs focus:outline-none cursor-pointer"
+                    value={selectedProductId}
+                    onChange={(e) => handleProductChange(e.target.value)}
+                    required
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl focus:outline-none text-gray-800 dark:text-slate-100"
                   >
                     {products.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.nom} - {p.prix} FCFA ({p.categorie})
+                      <option key={p.id} value={p.id} className="dark:bg-[#111c34]">
+                        🍞 {p.nom} ({p.prix} F)
                       </option>
                     ))}
                   </select>
                 </div>
 
-                <div className="w-24 space-y-1">
-                  <label className="text-gray-500 text-[10px] block">Quantité</label>
-                  <div className="flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                      className="px-2 py-1.5 hover:bg-slate-100 text-gray-500 text-xs cursor-pointer border-r border-gray-150"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="flex-1 text-center font-bold text-gray-800 text-xs">{quantity}</span>
-                    <button
-                      type="button"
-                      onClick={() => setQuantity(q => q + 1)}
-                      className="px-2 py-1.5 hover:bg-slate-100 text-gray-500 text-xs cursor-pointer border-l border-gray-150"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                {/* Amount override */}
+                <div className="space-y-1">
+                  <label className="block text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px]">Montant / Prix Unitaire</label>
+                  <input
+                    type="number"
+                    value={customPrice}
+                    onChange={(e) => setCustomPrice(e.target.value !== '' ? Number(e.target.value) : '')}
+                    placeholder="Prix FCFA de l'unité"
+                    required
+                    className="w-full p-2 bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl font-mono focus:outline-none font-bold text-gray-800 dark:text-slate-100"
+                  />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleAddToCart}
-                  className="px-4 py-2 bg-orange-500 text-white hover:bg-orange-600 font-bold rounded-xl transition-all h-9 flex items-center gap-1 cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  Ajouter au panier
-                </button>
+                {/* Product qty */}
+                <div className="space-y-1">
+                  <label className="block text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px]">Quantité</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={qty}
+                    onChange={(e) => setQty(Math.max(1, Number(e.target.value)))}
+                    className="w-full p-2 bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl font-mono text-center font-bold text-gray-800 dark:text-slate-100"
+                  />
+                </div>
+
               </div>
 
-              {/* Cart List table summary */}
-              {cartItems.length > 0 ? (
-                <div className="bg-white rounded-xl border border-gray-150 overflow-hidden mt-3">
-                  <table className="w-full ml-0 border-collapse font-sans text-xs">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-gray-100 text-gray-500 font-semibold text-[10px] uppercase">
-                        <th className="p-2 text-left">Produit</th>
-                        <th className="p-2 text-center">Quantité</th>
-                        <th className="p-2 text-right">Unit Price</th>
-                        <th className="p-2 text-right">Total</th>
-                        <th className="p-2 text-center w-10">Option</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {cartItems.map((item, idx) => (
-                        <tr key={item.product_id} className="hover:bg-slate-50">
-                          <td className="p-2 font-semibold text-gray-800">{item.nom}</td>
-                          <td className="p-2 text-center font-bold text-gray-700">{item.quantite}</td>
-                          <td className="p-2 text-right text-gray-600">{item.prix_unitaire.toLocaleString()} F</td>
-                          <td className="p-2 text-right font-black text-[#0B5D2A]">{item.total_ligne.toLocaleString()} F</td>
-                          <td className="p-2 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveFromCart(idx)}
-                              className="text-red-500 hover:text-red-700 cursor-pointer p-1 rounded-sm"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-[11px] text-gray-400 italic">Votre panier est de prime abord vide.</p>
-              )}
-            </div>
-
-            {/* Campaign configuration details */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Promo code reduction */}
               <div className="space-y-1">
-                <label className="font-semibold text-gray-700 block">Code Promo Appliqué</label>
-                <div className="relative">
-                  <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-violet-500" />
-                  <select
-                    value={selectedCodeId}
-                    onChange={(e) => setSelectedCodeId(e.target.value)}
-                    className="w-full pl-9 pr-2 py-2 border border-gray-200 bg-slate-50 rounded-xl focus:outline-none cursor-pointer"
-                  >
-                    <option value="none">Aucun code (Vente directe)</option>
-                    {promoCodes
-                      .filter(c => c.status === 'active')
-                      .map(c => {
-                        const actorName = actors.find(a => a.id === c.actor_id)?.full_name || 'Autre';
-                        return (
-                          <option key={c.id} value={c.id}>
-                            {c.code} ({actorName})
-                          </option>
-                        );
-                      })}
-                  </select>
+                <label className="block text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px] flex justify-between">
+                  <span>3. Code Promotionnel Référent</span>
+                  {discountRate > 0 && <span className="text-green-600 dark:text-green-450 normal-case font-bold">-5% applicable</span>}
+                </label>
+                <select
+                  value={selectedPromoCodeId}
+                  onChange={(e) => setSelectedPromoCodeId(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl focus:outline-none font-mono text-gray-800 dark:text-slate-100"
+                >
+                  <option value="none" className="dark:bg-[#111c34]">Aucun code promo (Vente directe)</option>
+                  {promoCodes
+                    .filter(c => c.status === 'active')
+                    .map(c => {
+                      const owner = actors.find(a => a.id === c.actor_id);
+                      return (
+                        <option key={c.id} value={c.id} className="dark:bg-[#111c34]">
+                          {c.code} ({owner ? `${owner.full_name} - ${owner.type_actor}` : 'BOAF'})
+                        </option>
+                      );
+                    })}
+                </select>
+              </div>
+
+              {/* Payment Mode */}
+              <div className="space-y-1">
+                <label className="block text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px]">4. Mode de règlement</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['Espèces', 'Mobile Money'].map(m => (
+                    <label
+                      key={m}
+                      className={`p-2.5 border rounded-xl text-center font-bold cursor-pointer transition-all block ${
+                        paymentMode === m
+                          ? 'bg-orange-50 dark:bg-orange-950/20 text-orange-850 dark:text-orange-400 border-orange-400'
+                          : 'bg-slate-50 dark:bg-slate-900/50 text-gray-600 dark:text-slate-400 border-gray-200 dark:border-slate-800 hover:bg-slate-100/50 dark:hover:bg-slate-800/40'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMode"
+                        value={m}
+                        checked={paymentMode === m}
+                        onChange={() => setPaymentMode(m)}
+                        className="sr-only"
+                      />
+                      {m === 'Espèces' ? '💵 Espèces' : '📱 MoMo / Wave'}
+                    </label>
+                  ))}
                 </div>
               </div>
 
-              <div className="space-y-1 text-left">
-                <label className="font-semibold text-gray-700 block">Canal d'Apport</label>
-                <select
-                  value={source}
-                  onChange={(e) => setSource(e.target.value)}
-                  className="w-full p-2 border border-gray-200 bg-slate-50 rounded-xl focus:outline-none cursor-pointer"
-                >
-                  <option value="Direct">Direct (Boutique de passage)</option>
-                  <option value="WhatsApp">Saisie Whatsapp Business</option>
-                  <option value="Terrain">Agent terrain (Mobile)</option>
-                  <option value="Partenaire">Dépôt Partenaire</option>
-                  <option value="Événement">Prestation Événementielle</option>
-                </select>
-              </div>
-
-              <div className="space-y-1 text-left">
-                <label className="font-semibold text-gray-700 block">Mode de Règlement</label>
-                <select
-                  value={paymentMode}
-                  onChange={(e) => setPaymentMode(e.target.value)}
-                  className="w-full p-2 border border-gray-200 bg-slate-50 rounded-xl focus:outline-none cursor-pointer"
-                >
-                  <option value="Espèces">Espèces (Cash FCFA)</option>
-                  <option value="Mobile Money">Mobile Money (MTN MoMo/Moov)</option>
-                  <option value="Virement">Virement bancaire</option>
-                  <option value="Chèque">Chèque d'entreprise</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Validation row */}
-            <div className="flex justify-between items-center bg-gray-50 p-4 rounded-2xl border border-gray-150">
-              <div className="text-left space-y-0.5">
-                <span className="text-[10px] text-gray-400 font-mono tracking-wider block uppercase">Total net dû</span>
-                <span className="text-xl font-extrabold font-display text-gray-900">
-                  {totalNet.toLocaleString()} FCFA
-                </span>
-                {remise > 0 && (
-                  <span className="text-[10px] text-green-600 block font-semibold">
-                    Rabais de 5% appliqué ({remise.toLocaleString()} FCFA)
-                  </span>
+              {/* Total calculations inline summary footer */}
+              <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 p-3.5 rounded-2xl">
+                <div className="flex justify-between text-[11px] text-gray-500 dark:text-slate-400 font-semibold font-mono">
+                  <span>Montant Brut :</span>
+                  <span>{totalBrut.toLocaleString()} F</span>
+                </div>
+                {discountVal > 0 && (
+                  <div className="flex justify-between text-[11px] text-green-700 dark:text-green-400 font-bold font-mono">
+                    <span>Remise Promo Code (5%) :</span>
+                    <span>-{discountVal.toLocaleString()} F</span>
+                  </div>
                 )}
+                <div className="flex justify-between text-base font-black text-slate-900 dark:text-white border-t border-dotted border-gray-200 dark:border-slate-800 mt-2 pt-2">
+                  <span>Net à payer :</span>
+                  <span className="text-[#0B5D2A] dark:text-green-400 font-mono">{totalNet.toLocaleString()} FCFA</span>
+                </div>
               </div>
 
               <button
                 type="submit"
-                className="px-6 py-3 bg-[#0B5D2A] text-white hover:bg-[#0B5D2A]/90 rounded-xl font-bold uppercase transition-all shadow-md shadow-green-900/10 cursor-pointer"
+                className="w-full py-3.5 mt-2 bg-[#0B5D2A] hover:bg-[#12823c] text-white font-black uppercase text-xs rounded-xl shadow-md transition-transform hover:scale-101 cursor-pointer"
               >
-                Générer ticket & valider
+                🎟️ Générer ticket BOAF
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+
+      {/* MODAL 2: TICKET PRINT OVERLAY VIEW */}
+      {showTicketModal && lastCreatedOrder && (
+        <div className="fixed inset-0 bg-gray-900/70 dark:bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn text-left text-xs">
+          <div className="bg-white dark:bg-[#111c34] rounded-[28px] w-full max-w-sm overflow-hidden border border-gray-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-[92vh]">
+            
+            <div className="bg-[#0B5D2A] p-4 text-white flex justify-between items-center shrink-0">
+              <span className="text-xs uppercase font-mono font-bold tracking-widest text-orange-400">Reçu Boulangerie</span>
+              <button
+                onClick={() => setShowTicketModal(false)}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
-          </form>
-        </div>
 
-        {/* Box 2: BOAF Delices Receipt Print view / Simulator */}
-        <div className="lg:col-span-1">
-          <div className="bg-amber-50/60 p-6 rounded-3xl border border-amber-200 shadow-md space-y-4 relative overflow-hidden font-mono text-[11px] text-gray-700 text-left">
-            {/* Visual ticket notch */}
-            <div className="absolute top-0 inset-x-0 h-1 bg-amber-300 border-t border-b border-amber-400" />
-            
-            <div className="text-center space-y-1 border-b border-dashed border-amber-200 pb-4">
-              <h4 className="font-display font-black text-xs text-[#0B5D2A] uppercase. tracking-widest text-[#0B5D2A]">
-                *** BOAF DÉLICES ***
-              </h4>
-              <p className="text-[10px] text-gray-400">BOAF Future Holdings SARL</p>
-              <p className="text-[10px] text-gray-400">Lokossa, Mono, Bénin</p>
-              <div className="tag-border text-[9px] bg-orange-100 text-orange-850 px-2.5 py-0.5 rounded-sm inline-block font-bold mt-2">
-                REÇU DIGITAL VALIDÉ
-              </div>
-            </div>
+            {/* Simulated Receipt Arena */}
+            <div className="p-6 overflow-y-auto flex-1 bg-amber-50/10 dark:bg-slate-950/40 text-gray-800 dark:text-slate-100 font-mono">
+              <div className="border-2 border-dashed border-gray-300 dark:border-slate-700 p-4 rounded-xl bg-white dark:bg-[#152342] space-y-4">
+                
+                {/* Header brand details */}
+                <div className="text-center border-b border-dashed border-gray-300 dark:border-slate-700 pb-3 space-y-1">
+                  <h4 className="font-display font-black text-sm text-[#0B5D2A] dark:text-green-400 tracking-widest">
+                    *** BOAF DÉLICES ***
+                  </h4>
+                  <p className="text-[10px] text-gray-400 dark:text-slate-400 font-sans leading-tight">BOAF Future Holdings SARL</p>
+                  <p className="text-[10px] text-gray-400 dark:text-slate-400 font-sans leading-tight">Lokossa, Mono, Bénin</p>
+                  <span className="mt-2 inline-block px-2.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-[9px] font-bold">
+                    REÇU DE COMMANDE VALIDÉ
+                  </span>
+                </div>
 
-            {/* Simulated Live ticket data fields */}
-            <div className="space-y-1.5 border-b border-dashed border-amber-200 pb-4">
-              <div className="flex justify-between">
-                <span>Réf Ticket :</span>
-                <span className="font-bold text-gray-950">{simulatedTicketNum}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Émis le :</span>
-                <span>{new Date().toLocaleDateString('fr-FR')} à {new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Client :</span>
-                <span className="font-sans font-bold text-gray-800">{customerName || 'Client Passage'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Type d'apport :</span>
-                <span>{source}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Réglement :</span>
-                <span>{paymentMode}</span>
-              </div>
-            </div>
+                {/* Ticket Details metadata */}
+                <div className="space-y-1.5 border-b border-dashed border-gray-300 dark:border-slate-700 pb-3 text-[11px]">
+                  <div className="flex justify-between">
+                    <span>N° TICKET :</span>
+                    <span className="font-bold text-gray-950 dark:text-emerald-300">{lastCreatedOrder.ticket_number}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Date :</span>
+                    <span>{new Date(lastCreatedOrder.created_at).toLocaleDateString('fr-FR')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Mode paiement :</span>
+                    <span className="font-bold text-gray-950 dark:text-emerald-300">{lastCreatedOrder.payment_mode}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Client :</span>
+                    <span className="font-sans font-bold text-gray-900 dark:text-white">{lastCreatedOrder.customer_name}</span>
+                  </div>
+                </div>
 
-            {/* Cart products lines items table */}
-            <div className="space-y-1.5 border-b border-dashed border-amber-200 pb-4">
-              <div className="font-bold text-gray-800 uppercase block tracking-wider mb-1">Détails articles :</div>
-              {cartItems.length > 0 ? (
-                <div className="space-y-1">
-                  {cartItems.map(it => (
+                {/* Product details */}
+                <div className="space-y-1.5 border-b border-dashed border-gray-300 dark:border-slate-700 pb-3 text-[11px]">
+                  <span className="font-sans font-bold text-[10px] text-gray-400 dark:text-slate-400 block mb-1">DÉTAIL ARTICLES :</span>
+                  {lastCreatedOrder.items.map(it => (
                     <div key={it.product_id} className="flex justify-between">
-                      <span>{it.nom} x{it.quantite}</span>
+                      <span>{it.nom} (x{it.quantite})</span>
                       <span>{it.total_ligne.toLocaleString()} F</span>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="space-y-1">
+
+                {/* Totals */}
+                <div className="space-y-1 border-b border-dashed border-gray-300 dark:border-slate-700 pb-3 font-bold text-gray-950 dark:text-white">
                   <div className="flex justify-between">
-                    <span>Double Pain sucré x1</span>
-                    <span>150 F</span>
+                    <span>Total Brut :</span>
+                    <span>{lastCreatedOrder.total_brut.toLocaleString()} F</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Pain ordinaire x1</span>
-                    <span>125 F</span>
+                  {lastCreatedOrder.remise > 0 && (
+                    <div className="flex justify-between text-green-700 dark:text-green-400">
+                      <span>Remise (Code Promo) :</span>
+                      <span>-{lastCreatedOrder.remise.toLocaleString()} F</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-md text-[#0B5D2A] dark:text-green-400 font-black pt-1">
+                    <span>NET À PAYER :</span>
+                    <span>{lastCreatedOrder.total_net.toLocaleString()} FCFA</span>
                   </div>
                 </div>
-              )}
-            </div>
 
-            {/* Receipt Totals summary */}
-            <div className="space-y-1 border-b border-dashed border-amber-200 pb-4 font-bold text-gray-900">
-              <div className="flex justify-between">
-                <span>Total Brut :</span>
-                <span>{(totalBrut || 275).toLocaleString()} F</span>
-              </div>
-              {remise > 0 && (
-                <div className="flex justify-between text-green-700">
-                  <span>Remise Promo (5%) :</span>
-                  <span>-{remise.toLocaleString()} F</span>
+                {/* Match QR and scanner control */}
+                <div className="pt-2 text-center space-y-2">
+                  <p className="text-[10px] font-sans font-semibold text-center text-gray-500 dark:text-slate-405">
+                    Bénéficiaire commission : <br />
+                    <strong className="text-[#0B5D2A] dark:text-green-450 text-xs font-bold leading-none">
+                      {lastCreatedOrder.code_promo_text 
+                        ? (actors.find(a => promoCodes.some(p => p.code === lastCreatedOrder.code_promo_text && p.actor_id === a.id))?.full_name || 'Partenaire Référencé')
+                        : 'Vente directe (Sans apporteur)'
+                      }
+                    </strong>
+                  </p>
+
+                  <div className="w-24 h-24 bg-white p-1.5 rounded-lg border border-gray-250 mx-auto flex items-center justify-center">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${lastCreatedOrder.ticket_number}`}
+                      alt="Ticket Scan QR"
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  
+                  <span className="text-[8px] bg-[#0B5D2A] dark:bg-[#12823c] text-white px-2 py-0.5 rounded font-black tracking-widest inline-block animate-pulse">
+                    BOAF SECURITY SYSTEM
+                  </span>
                 </div>
-              )}
-              <div className="flex justify-between text-lg text-[#0B5D2A] font-black pt-1">
-                <span>NET PAYÉ :</span>
-                <span>{(totalNet || 275).toLocaleString()} FCFA</span>
+
               </div>
             </div>
 
-            {/* Associated Agent of promotion details */}
-            <div className="text-center space-y-3 pt-2">
-              <span className="text-[10px] text-gray-400 block uppercase font-bold tracking-wider">
-                Bénéficiaire Code Promo :
-              </span>
-              <p className="font-sans text-xs font-black text-slate-800">
-                {chosenPromoCode
-                  ? actors.find(a => a.id === chosenPromoCode.actor_id)?.full_name
-                  : 'Vente directe (Pas de commission)'}
-              </p>
-
-              {/* Dynamic scan QR code pointing to real parameters verification tool */}
-              <div className="w-28 h-28 mx-auto bg-white p-2 rounded-xl border border-amber-200 shadow-sm flex items-center justify-center">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${simulatedTicketNum}`}
-                  alt="QR Code Ticket"
-                  className="w-full h-full object-contain"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
+            {/* Actions Footer print */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-gray-150 dark:border-slate-800 flex gap-2 shrink-0">
+              <button
+                onClick={() => {
+                  window.print();
+                }}
+                className="flex-1 py-3 bg-slate-800 hover:bg-slate-900 dark:bg-slate-950 dark:hover:bg-slate-900 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer border dark:border-slate-800"
+              >
+                <Printer className="w-4 h-4" />
+                Imprimer le Ticket
+              </button>
               
-              <span className="text-[9px] text-[#0B5D2A] font-black tracking-widest block uppercase mt-1 animate-pulse">
-                SCANNEL POUR CONTRÔLE
-              </span>
-              <p className="text-[9px] text-gray-400 block max-w-[200px] mx-auto italic">
-                Ce QR Code est scannable par le superviseur pour valider le ticket auprès des boulangeries.
-              </p>
+              <button
+                onClick={() => setShowTicketModal(false)}
+                className="flex-1 py-3 bg-orange-500 hover:bg-orange-600 text-white font-black text-xs rounded-xl cursor-pointer"
+              >
+                Fermer
+              </button>
             </div>
+
           </div>
         </div>
-
-      </div>
-
-      {/* Box 3: Promo code quick generator according strictly to format lists */}
-      <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xs space-y-4">
-        <div className="flex items-center gap-2 border-b border-gray-100 pb-3 text-left">
-          <QrCode className="w-5 h-5 text-purple-600" />
-          <h3 className="font-display font-extrabold text-[#0B5D2A] text-base leading-none">
-            Générer un code promotionnel de Campagne
-          </h3>
-          <span className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Format obligatoire</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end text-xs text-left">
-          <div className="space-y-1">
-            <label className="font-semibold text-gray-700 block">Type de Campagne</label>
-            <select
-              value={genTypeCode}
-              onChange={(e) => setGenTypeCode(e.target.value)}
-              className="w-full p-2 border border-gray-200 bg-slate-50 rounded-xl focus:outline-none cursor-pointer"
-            >
-              <option value="BOAF-ECO">Écoles (BOAF-ECO-0001)</option>
-              <option value="BOAF-EGL">Églises (BOAF-EGL-0001)</option>
-              <option value="BOAF-EVT">Événement (BOAF-EVT-YYMMDD-001)</option>
-              <option value="BOAF-DIG">Campagne Digitale (BOAF-DIG-0001)</option>
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="font-semibold text-gray-700 block">Rattacher à un acteur référent</label>
-            <select
-              value={genActorId}
-              onChange={(e) => setGenActorId(e.target.value)}
-              className="w-full p-2 border border-gray-200 bg-slate-50 rounded-xl focus:outline-none cursor-pointer"
-            >
-              {actors.map(act => (
-                <option key={act.id} value={act.id}>
-                  {act.full_name} ({act.type_actor})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            onClick={handleGeneratePromoCode}
-            className="p-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-all h-9 flex items-center justify-center gap-2 cursor-pointer font-sans"
-          >
-            <RefreshCw className="w-4 h-4 text-white" />
-            Générer le Code Promo
-          </button>
-
-          <div className="space-y-1">
-            <label className="text-gray-400 block text-[10px] font-bold">Code généré avec succès :</label>
-            <span className="inline-block w-full py-2 px-3 border border-dashed border-purple-300 text-purple-700 font-mono font-bold bg-purple-50 text-center rounded-xl text-sm uppercase tracking-widest whitespace-nowrap overflow-hidden text-ellipsis">
-              {generatedResult || 'En attente...'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Orders log listings table */}
-      <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xs space-y-4">
-        <h4 className="font-display font-extrabold text-[#0B5D2A] text-base tracking-tight text-left">
-          Historique des tickets récents émis
-        </h4>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 border-b border-gray-200 text-gray-500 font-mono text-[10px] uppercase tracking-wider">
-                <th className="py-3 px-4">Numéro Ticket</th>
-                <th className="py-3 px-4">Date d'Émission</th>
-                <th className="py-3 px-4">Identité Client</th>
-                <th className="py-3 px-4 text-center">Canal d'Apport</th>
-                <th className="py-3 px-4 text-center">Code Promo</th>
-                <th className="py-3 px-4 text-right">Montant Brut</th>
-                <th className="py-3 px-4 text-right">Montant Net</th>
-                <th className="py-3 px-4 text-center">Règlement</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-105 bg-white">
-              {orders.slice(0, 10).map(ord => (
-                <tr key={ord.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-4 px-4 font-mono font-bold text-slate-800">
-                    <span className="flex items-center gap-2 text-[#0B5D2A]">
-                      <FileText className="w-4 h-4 text-gray-450 shrink-0" />
-                      {ord.ticket_number}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 text-gray-500 font-mono">
-                    {new Date(ord.created_at).toLocaleDateString('fr-FR')}
-                  </td>
-                  <td className="py-4 px-4 font-bold text-gray-900 font-sans">{ord.customer_name}</td>
-                  <td className="py-4 px-4 text-center">
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-705 border border-slate-200">
-                      {ord.source}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    {ord.code_promo_text ? (
-                      <span className="px-2.5 py-1 rounded-md font-mono font-bold bg-violet-50 text-violet-700 border border-violet-100">
-                        {ord.code_promo_text}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400 italic">Vente Directe</span>
-                    )}
-                  </td>
-                  <td className="py-4 px-4 text-right text-gray-600 font-semibold">{ord.total_brut.toLocaleString()} F</td>
-                  <td className="py-4 px-4 text-right font-black text-[#0B5D2A]">{ord.total_net.toLocaleString()} F</td>
-                  <td className="py-4 px-4 text-center">
-                    <span className="bg-sky-50 text-sky-700 px-2.5 py-1 rounded-md font-semibold text-[10px] border border-sky-100">
-                      {ord.payment_mode}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      )}
 
     </div>
   );

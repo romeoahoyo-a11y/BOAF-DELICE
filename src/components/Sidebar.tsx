@@ -9,7 +9,9 @@ import {
   FileSpreadsheet,
   Settings,
   Flame,
-  CheckSquare
+  CheckSquare,
+  Tag,
+  BookOpen
 } from 'lucide-react';
 import { Order } from '../types';
 
@@ -17,9 +19,10 @@ interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   orders: Order[];
+  currentRole: string;
 }
 
-export default function Sidebar({ activeTab, setActiveTab, orders }: SidebarProps) {
+export default function Sidebar({ activeTab, setActiveTab, orders, currentRole }: SidebarProps) {
   // Compute live sales sum for current progress towards the 10,000,000 FCFA goal
   const totalSalesNet = orders
     .filter(o => o.order_status === 'valid' && o.payment_status === 'paid')
@@ -28,29 +31,42 @@ export default function Sidebar({ activeTab, setActiveTab, orders }: SidebarProp
   const goalTarget = 10000000; // 10 Million FCFA
   const percentage = Math.min(100, Math.round((totalSalesNet / goalTarget) * 100));
 
-  const navItems = [
-    { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
-    { id: 'actors', label: 'Gestion des acteurs', icon: Users },
-    { id: 'sales', label: 'Vente, Code & Ticket', icon: Receipt },
-    { id: 'verify', label: 'Vérifier un code', icon: Search },
-    { id: 'attendance', label: 'Présence & Localisation', icon: MapPin },
-    { id: 'commissions', label: 'Commissions', icon: Coins },
-    { id: 'reports', label: 'Rapports & Exports', icon: FileSpreadsheet },
-    { id: 'settings', label: 'Paramètres', icon: Settings },
+  const fullNavItems = [
+    { id: 'dashboard', label: 'Accueil', icon: LayoutDashboard },
+    { id: 'sales', label: 'Ventes', icon: Receipt },
+    { id: 'actors', label: 'Acteurs', icon: Users },
+    { id: 'products', label: 'Catalogue Produits', icon: BookOpen },
+    { id: 'promo_codes', label: 'Codes Promo', icon: Tag },
+    { id: 'attendance', label: 'Présence Terrain', icon: MapPin },
+    { id: 'reports', label: 'Rapports', icon: FileSpreadsheet },
   ];
 
+  // Role based filtering: 
+  // - Admin & Superviseur see all.
+  // - Agent sees Accueil, Ventes, Catalogue Produits, Présence Terrain.
+  // - Partner/Ambassador sees Accueil, Codes Promo, Catalogue Produits.
+  const filteredNavItems = fullNavItems.filter(item => {
+    if (currentRole === 'agent') {
+      return ['dashboard', 'sales', 'products', 'attendance'].includes(item.id);
+    }
+    if (['partner', 'ambassador', 'collaborator'].includes(currentRole)) {
+      return ['dashboard', 'promo_codes', 'products'].includes(item.id);
+    }
+    return true; // Admin/Superviseur sees all
+  });
+
   return (
-    <aside className="w-68 bg-white border-r border-[#E5E7EB] flex flex-col h-screen fixed left-0 top-0 z-20">
+    <aside className="w-68 bg-white dark:bg-[#111c33] border-r border-[#E5E7EB] dark:border-slate-800 flex flex-col h-screen fixed left-0 top-0 z-20 transition-colors">
       {/* Brand Header */}
-      <div className="p-6 border-b border-[#E5E7EB] flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center shadow-md">
+      <div className="p-6 border-b border-[#E5E7EB] dark:border-slate-800 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center shadow-md shrink-0">
           <span className="text-white font-bold font-display text-xl">B</span>
         </div>
         <div>
-          <h1 className="font-display font-extrabold text-[#0B5D2A] text-lg leading-tight uppercase tracking-wide">
+          <h1 className="font-display font-extrabold text-[#0B5D2A] dark:text-green-400 text-lg leading-tight uppercase tracking-wide">
             BOAF Délices
           </h1>
-          <p className="text-[10px] text-gray-400 font-mono tracking-wider uppercase">
+          <p className="text-[10px] text-gray-400 dark:text-slate-500 font-mono tracking-wider uppercase">
             Future Holdings
           </p>
         </div>
@@ -58,7 +74,7 @@ export default function Sidebar({ activeTab, setActiveTab, orders }: SidebarProp
 
       {/* Navigation Links */}
       <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-        {navItems.map(item => {
+        {filteredNavItems.map(item => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
@@ -67,16 +83,33 @@ export default function Sidebar({ activeTab, setActiveTab, orders }: SidebarProp
               onClick={() => setActiveTab(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${
                 isActive
-                  ? 'bg-orange-50 text-orange-600 border-l-4 border-orange-500 shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-orange-50 dark:bg-orange-950/20 text-orange-605 dark:text-orange-400 border-l-4 border-orange-500'
+                  : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50 hover:text-gray-900 dark:hover:text-slate-100'
               }`}
             >
-              <Icon className={`w-5 h-5 transition-colors ${isActive ? 'text-orange-600' : 'text-gray-400'}`} />
+              <Icon className={`w-5 h-5 transition-colors ${isActive ? 'text-orange-650 dark:text-orange-450' : 'text-gray-400 dark:text-slate-500'}`} />
               <span className="font-sans font-semibold tracking-tight">{item.label}</span>
             </button>
           );
         })}
       </nav>
+
+      {/* Discrete administrative setup / gear at the bottom if admin or supervisor */}
+      {(currentRole === 'admin' || currentRole === 'superviseur') && (
+        <div className="px-4 pb-2 border-t border-gray-100 dark:border-slate-800 pt-3">
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-tight transition-colors cursor-pointer ${
+              activeTab === 'settings'
+                ? 'bg-orange-50 dark:bg-orange-950/20 text-orange-605 dark:text-orange-400'
+                : 'text-gray-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-gray-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <Settings className="w-4 h-4 shrink-0" />
+            <span>Paramètres Avancés</span>
+          </button>
+        </div>
+      )}
 
       {/* Dynamic Objective Gauge Widget */}
       <div className="p-4 m-4 bg-[#0B5D2A] rounded-2xl text-white shadow-lg space-y-4 relative overflow-hidden">

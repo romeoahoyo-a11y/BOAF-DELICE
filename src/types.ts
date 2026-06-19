@@ -1,7 +1,7 @@
 export type ActorType = 'employee' | 'agent' | 'partner' | 'collaborator' | 'ambassador';
 export type ActorStatus = 'active' | 'suspended' | 'inactive';
-export type AttendanceStatus = 'present' | 'late' | 'absent' | 'on_mission' | 'out_of_zone' | 'not_closed';
-export type CodeStatus = 'active' | 'suspended' | 'expired';
+export type AttendanceStatus = 'present' | 'late' | 'absent' | 'on_mission' | 'out_of_zone' | 'not_closed' | 'planned' | 'arrived' | 'in_progress' | 'completed' | 'postponed';
+export type CodeStatus = 'active' | 'suspended' | 'expired' | 'inactive';
 export type CommissionStatus = 'pending' | 'validated' | 'rejected' | 'paid';
 export type PaymentStatus = 'unpaid' | 'paid';
 export type OrderStatus = 'valid' | 'cancelled';
@@ -61,10 +61,16 @@ export interface PromoCode {
 export interface Product {
   id: string;
   nom: string;
-  categorie: string; // 'Pain', 'Gouter', 'Repas', 'Patisserie', 'Traiteur', 'Hebergement'
+  categorie: string; // 'Pain', 'Repas', 'Jus', 'Pâtisserie', 'Traiteur', 'Boisson', 'Offre spéciale', 'Hébergement', 'Autre'
   prix: number; // FCFA
   marge_estimee: number; // percentage (e.g. 40)
   actif: boolean;
+  description?: string;
+  image_url?: string; // base64 or link
+  disponibilite?: 'disponible' | 'indisponible';
+  show_in_catalog?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface OrderItem {
@@ -121,18 +127,32 @@ export interface AttendanceLog {
   agent_name: string;
   agent_code: string;
   date: string; // YYYY-MM-DD
-  checkin_at: string; // ISO String
+  checkin_at?: string; // ISO String
   checkout_at?: string; // ISO String
-  lat_in: number;
-  lng_in: number;
+  lat_in?: number;
+  lng_in?: number;
   lat_out?: number;
   lng_out?: number;
-  accuracy_m: number;
+  accuracy_m?: number;
   status: AttendanceStatus;
   zone_id: string;
   zone_name: string;
-  note?: string;
-  photo_url?: string;
+  note?: string; // Remarque / justification note
+  photo_url?: string; // Photo of stand / location
+
+  // Mission assignment fields
+  start_time_prevu?: string; // e.g. '08:00'
+  end_time_prevu?: string; // e.g. '16:00'
+  lieu_precis?: string; // école, église, marché, carrefour, administration, événement, entreprise, lieu public
+  objectif?: string; // vente, distribution de prospectus, collecte de contacts, promotion d’un produit, suivi partenaire
+  produits_presentes?: string[]; // list of products offered
+  code_promo_lie?: string; // Promo code associated
+
+  // Rich outcomes
+  contacts_count?: number;
+  ventes_count?: number;
+  montant_vendu?: number; // FCFA Amount
+  difficulties?: string; // Problems experienced
 }
 
 export interface Prospect {
