@@ -440,18 +440,19 @@ export default function SalesView({
 
       {/* Supabase Connection Setup Card */}
       {isSupabaseSyncMode && (
-        <div className="bg-slate-900/40 dark:bg-[#111c34]/40 p-6 rounded-3xl border border-slate-800 space-y-5">
+        <div className="bg-slate-900/40 dark:bg-[#111c34]/40 p-6 rounded-3xl border border-slate-800 space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping" />
                 <h3 className="text-xs font-black uppercase text-white tracking-wider flex items-center gap-1.5">
                   <Database className="w-4 h-4 text-emerald-400" />
-                  Paramètres de Connexion Supabase Active
+                  Synchronisation Supabase Active
                 </h3>
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                Le logiciel va interroger la table <code className="bg-slate-950 px-1.5 py-0.5 rounded text-emerald-400 font-mono text-[10px]">{supabaseTable}</code> pour identifier toutes les commandes liées à un code promotionnel BOAF actif, puis recalculer instantanément les remises de 5% clients et vos commissions affiliés.
+                Le logiciel interroge la table <code className="bg-slate-950 px-1.5 py-0.5 rounded text-emerald-400 font-mono text-[10px]">{supabaseTable}</code> pour identifier toutes les commandes liées à un code promotionnel BOAF actif, puis recalcule instantanément les remises de 5% clients et vos commissions affiliés. 
+                <span className="text-gray-500 block mt-1">Vous pouvez modifier les identifiants de connexion Supabase (URL, Clé, Table) à tout moment dans l'onglet <strong className="text-gray-400 font-semibold">Paramètres</strong>.</span>
               </p>
             </div>
 
@@ -472,54 +473,6 @@ export default function SalesView({
               <span>{syncSuccessMessage}</span>
             </div>
           )}
-
-          {/* Setup fields */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-950/40 p-4 rounded-2xl border border-slate-850">
-            <div className="space-y-1">
-              <label className="block text-[9px] uppercase font-bold tracking-wider text-slate-500">Supabase URL</label>
-              <input
-                type="text"
-                value={supabaseUrl}
-                onChange={(e) => {
-                  setSupabaseUrl(e.target.value);
-                  localStorage.setItem('boaf_supabase_url', e.target.value);
-                }}
-                placeholder="https://your-project.supabase.co"
-                className="w-full py-1.5 px-3 bg-slate-950 border border-slate-800 text-white font-mono text-xs rounded-lg focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="block text-[9px] uppercase font-bold tracking-wider text-slate-500">Service Role API Key</label>
-              <div className="relative">
-                <input
-                  type="password"
-                  value={supabaseKey}
-                  onChange={(e) => {
-                    setSupabaseKey(e.target.value);
-                    localStorage.setItem('boaf_supabase_key', e.target.value);
-                  }}
-                  placeholder="eyJhbGciOiJIUzI1..."
-                  className="w-full py-1.5 pl-3 pr-8 bg-slate-950 border border-slate-800 text-white font-mono text-xs rounded-lg focus:outline-none focus:border-emerald-500"
-                />
-                <Lock className="w-3.5 h-3.5 text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2" />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="block text-[9px] uppercase font-bold tracking-wider text-slate-500">Nom de la table des commandes</label>
-              <input
-                type="text"
-                value={supabaseTable}
-                onChange={(e) => {
-                  setSupabaseTable(e.target.value);
-                  localStorage.setItem('boaf_supabase_table', e.target.value);
-                }}
-                placeholder="commandes"
-                className="w-full py-1.5 px-3 bg-slate-950 border border-slate-800 text-white font-mono text-xs rounded-lg focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-          </div>
         </div>
       )}
 

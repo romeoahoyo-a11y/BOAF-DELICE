@@ -17,9 +17,64 @@ import {
   Smartphone,
   CheckCircle2,
   SmartphoneNfc,
-  Clock
+  Clock,
+  Search,
+  Grid,
+  List,
+  Layers,
+  AlertCircle
 } from 'lucide-react';
 import { Product } from '../types';
+
+// Proposed professional images for the catalog creation
+const SUGGESTED_IMAGES = [
+  // Pain
+  { url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&auto=format&fit=crop&q=80', label: 'Brioche moelleuse', category: 'Pain' },
+  { url: 'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?w=400&auto=format&fit=crop&q=80', label: 'Pain croustillant', category: 'Pain' },
+  { url: 'https://images.unsplash.com/photo-1589415081126-7d402436e14c?w=400&auto=format&fit=crop&q=80', label: 'Pain de table', category: 'Pain' },
+  { url: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?w=400&auto=format&fit=crop&q=80', label: 'Pain doré bio', category: 'Pain' },
+
+  // Repas
+  { url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&auto=format&fit=crop&q=80', label: 'Plat chaud complet', category: 'Repas' },
+  { url: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?w=400&auto=format&fit=crop&q=80', label: 'Poulet rôti braisé', category: 'Repas' },
+  { url: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&auto=format&fit=crop&q=80', label: 'Riz traditionnel', category: 'Repas' },
+  { url: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=400&auto=format&fit=crop&q=80', label: 'Brochettes & Grillades', category: 'Repas' },
+
+  // Jus
+  { url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=400&auto=format&fit=crop&q=80', label: 'Jus d’Ananas frais', category: 'Jus' },
+  { url: 'https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=400&auto=format&fit=crop&q=80', label: 'Cocktail de fruits', category: 'Jus' },
+  { url: 'https://images.unsplash.com/photo-1536935338788-846bb9981813?w=400&auto=format&fit=crop&q=80', label: 'Jus de Bissap local', category: 'Jus' },
+  { url: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400&auto=format&fit=crop&q=80', label: 'Citronnade / Gingembre', category: 'Jus' },
+
+  // Pâtisserie
+  { url: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&auto=format&fit=crop&q=80', label: 'Gâteau d’Anniversaire', category: 'Pâtisserie' },
+  { url: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&auto=format&fit=crop&q=80', label: 'Croissant pur beurre', category: 'Pâtisserie' },
+  { url: 'https://images.unsplash.com/photo-1519869325930-281384150729?w=400&auto=format&fit=crop&q=80', label: 'Tartelettes fruitées', category: 'Pâtisserie' },
+  { url: 'https://images.unsplash.com/photo-1587314168485-3236d6710814?w=400&auto=format&fit=crop&q=80', label: 'Mignardises / Macarons', category: 'Pâtisserie' },
+
+  // Boisson
+  { url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=400&auto=format&fit=crop&q=80', label: 'Jus d’Ananas frais', category: 'Boisson' },
+  { url: 'https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=400&auto=format&fit=crop&q=80', label: 'Cocktail de fruits', category: 'Boisson' },
+  { url: 'https://images.unsplash.com/photo-1536935338788-846bb9981813?w=400&auto=format&fit=crop&q=80', label: 'Jus de Bissap local', category: 'Boisson' },
+  { url: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400&auto=format&fit=crop&q=80', label: 'Citronnade / Gingembre', category: 'Boisson' },
+
+  // Traiteur
+  { url: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=400&auto=format&fit=crop&q=80', label: 'Buffet gourmand', category: 'Traiteur' },
+  { url: 'https://images.unsplash.com/photo-1561058025-a6e50e96035d?w=400&auto=format&fit=crop&q=80', label: 'Amuse-bouches traiteur', category: 'Traiteur' },
+  { url: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=400&auto=format&fit=crop&q=80', label: 'Événement buffet chaud', category: 'Traiteur' },
+
+  // Offre spéciale
+  { url: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=400&auto=format&fit=crop&q=80', label: 'Cocktail de goûters', category: 'Offre spéciale' },
+  { url: 'https://images.unsplash.com/photo-1561058025-a6e50e96035d?w=400&auto=format&fit=crop&q=80', label: 'Assortiment de fête', category: 'Offre spéciale' },
+
+  // Hébergement
+  { url: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&auto=format&fit=crop&q=80', label: 'Eco-Gîte de Lokossa', category: 'Hébergement' },
+  { url: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=400&auto=format&fit=crop&q=80', label: 'Chambre double douillette', category: 'Hébergement' },
+  { url: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=400&auto=format&fit=crop&q=80', label: 'Vue extérieure Gîte', category: 'Hébergement' },
+
+  // Autre
+  { url: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400&auto=format&fit=crop&q=80', label: 'Artisanat / Épicerie', category: 'Autre' }
+];
 
 interface ProductsCatalogViewProps {
   products: Product[];
@@ -35,6 +90,9 @@ export default function ProductsCatalogView({
   // Mode controls
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [activeLayout, setActiveLayout] = useState<'gallery' | 'table'>('gallery');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
   // Form fields
   const [nom, setNom] = useState('');
@@ -48,6 +106,7 @@ export default function ProductsCatalogView({
   // Image preview state
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedSuggestTab, setSelectedSuggestTab] = useState<string>('auto');
 
   // Catalogue generation states
   const [showCatalogModal, setShowCatalogModal] = useState(false);
@@ -429,6 +488,101 @@ export default function ProductsCatalogView({
                   }}
                   className="w-full p-2 bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-slate-100 rounded-xl focus:outline-none placeholder-gray-400 dark:placeholder-slate-500 font-mono text-[10px]"
                 />
+
+                {/* Suggested image gallery */}
+                <div className="mt-3 space-y-2 bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-gray-150 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-[#0B5D2A] dark:text-green-400 font-extrabold uppercase flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-orange-500 animate-pulse" />
+                      Propositions d'images BOAF
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSuggestTab(selectedSuggestTab === 'Tout' ? 'auto' : 'Tout')}
+                      className="text-[9.5px] font-black uppercase text-orange-500 hover:text-orange-600 bg-transparent border-none cursor-pointer"
+                    >
+                      {selectedSuggestTab === 'Tout' ? '✓ Revenir aux suggestions' : 'Voir toutes les images'}
+                    </button>
+                  </div>
+
+                  {/* Tiny Pills filter */}
+                  <div className="flex flex-wrap gap-1 pb-1">
+                    {[
+                      { key: 'auto', label: `Recommandé (${categorie})` },
+                      { key: 'Pain', label: 'Pain' },
+                      { key: 'Repas', label: 'Repas' },
+                      { key: 'Jus', label: 'Jus' },
+                      { key: 'Pâtisserie', label: 'Pâtisserie' },
+                      { key: 'Hébergement', label: 'Hébergement' },
+                      { key: 'Traiteur', label: 'Traiteur' },
+                      { key: 'Tout', label: 'Tout' }
+                    ].map((tab) => {
+                      const isActive = selectedSuggestTab === tab.key;
+                      return (
+                        <button
+                          key={tab.key}
+                          type="button"
+                          onClick={() => setSelectedSuggestTab(tab.key)}
+                          className={`px-2 py-0.5 rounded-md text-[9px] font-bold border cursor-pointer transition-all ${
+                            isActive
+                              ? 'bg-orange-500 text-white border-orange-500'
+                              : 'bg-white dark:bg-[#152342] text-gray-600 dark:text-slate-400 border-gray-200/80 dark:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Thumbnails grid */}
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-[140px] overflow-y-auto pr-1">
+                    {(() => {
+                      const activeTab = selectedSuggestTab === 'auto' ? categorie : selectedSuggestTab;
+                      const filteredSuggestions = activeTab === 'Tout'
+                        ? SUGGESTED_IMAGES
+                        : SUGGESTED_IMAGES.filter(img => img.category.toLowerCase() === activeTab.toLowerCase());
+                      const finalSuggestions = filteredSuggestions.length > 0 ? filteredSuggestions : SUGGESTED_IMAGES;
+
+                      return finalSuggestions.map((img, idx) => {
+                        const isSelected = imageUrl === img.url;
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            title={img.label}
+                            onClick={() => {
+                              setImageUrl(img.url);
+                              setImagePreview(img.url);
+                            }}
+                            className={`relative aspect-square rounded-xl overflow-hidden border-2 cursor-pointer transition-all group hover:scale-[1.03] ${
+                              isSelected
+                                ? 'border-orange-500 ring-2 ring-orange-500/20'
+                                : 'border-transparent hover:border-gray-300 dark:hover:border-slate-700'
+                            }`}
+                          >
+                            <img
+                              src={img.url}
+                              alt={img.label}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                              <span className="text-[7.5px] text-white font-black text-center px-1 leading-tight uppercase">
+                                Choisir
+                              </span>
+                            </div>
+                            {isSelected && (
+                              <div className="absolute top-1 right-1 bg-orange-500 text-white p-0.5 rounded-full shadow-xs">
+                                <Check className="w-2.5 h-2.5 stroke-[3]" />
+                              </div>
+                            )}
+                          </button>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
               </div>
 
               {/* Availability & Catalog checkboxes */}
@@ -499,173 +653,381 @@ export default function ProductsCatalogView({
         </div>
       )}
 
-      {/* MAIN SCREEN: grid of products and direct overview list (Section C/Table) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start no-print">
-        {/* Left pane: Small quick action cards or stats */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white dark:bg-[#0f1a30] p-6 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-xs text-left transition-colors">
-            <h3 className="font-display font-bold text-gray-900 dark:text-slate-100 text-sm flex items-center gap-2 border-b border-gray-100 dark:border-slate-800 pb-3">
-              <Sparkles className="w-4 h-4 text-orange-500 animate-pulse" />
-              Chiffres Clés du Catalogue
+      {/* MINI-DASHBOARD DE PRODUITS PRO */}
+      <div className="bg-white dark:bg-[#0f1a30] p-5 rounded-3xl border border-gray-150 dark:border-slate-800 shadow-sm space-y-4 no-print">
+        <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-orange-500 animate-pulse" />
+            <h3 className="text-xs font-bold text-gray-900 dark:text-slate-100 uppercase tracking-wider">
+              Chiffres Clés du Catalogue Commercial
             </h3>
-            
-            <div className="grid grid-cols-2 gap-3 pt-4">
-              <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-2xl border border-gray-100 dark:border-slate-800/80 text-left">
-                <span className="text-[10px] text-gray-400 dark:text-slate-500 block font-mono uppercase font-black">Actifs</span>
-                <span className="text-xl font-black text-[#0B5D2A] dark:text-green-400 font-mono">
-                  {products.length}
-                </span>
-                <span className="text-[9px] text-gray-400 block font-sans">produits en vente</span>
-              </div>
+          </div>
+          <span className="text-[10px] font-bold text-[#0B5D2A] bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 px-2.5 py-1 rounded-full">
+            Tarifs de Référence Officiels
+          </span>
+        </div>
 
-              <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-2xl border border-gray-100 dark:border-slate-800/80 text-left">
-                <span className="text-[10px] text-gray-400 dark:text-slate-500 block font-mono uppercase font-black">A4 Catalogue</span>
-                <span className="text-xl font-black text-orange-500 font-mono">
-                  {products.filter(p => p.show_in_catalog !== false).length}
-                </span>
-                <span className="text-[9px] text-gray-400 block font-sans">articles autorisés</span>
-              </div>
-
-              <div className="bg-[#FFF9F6] dark:bg-[#152342] p-3 rounded-2xl border border-orange-50 dark:border-slate-800/80 text-left col-span-2">
-                <span className="text-[10px] text-orange-600 block font-mono uppercase font-black">En Rupture</span>
-                <span className="text-md font-bold text-orange-700 dark:text-orange-400">
-                  {products.filter(p => p.disponibilite === 'indisponible').length} produits temporairement épuisés
-                </span>
-              </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-gray-150/40 dark:border-slate-850">
+            <span className="text-[9px] uppercase font-bold text-gray-400 block tracking-wider">Total Articles</span>
+            <div className="flex items-baseline gap-1.5 mt-0.5">
+              <span className="text-xl font-black text-gray-900 dark:text-white font-mono">{products.length}</span>
+              <span className="text-[9px] text-gray-400">fiches actives</span>
             </div>
+          </div>
 
-            <div className="mt-4 p-3 bg-emerald-50/20 dark:bg-emerald-950/10 rounded-xl border border-emerald-100/50 dark:border-slate-800/80 text-[10.5px] text-gray-550 dark:text-slate-400 leading-normal">
-              ℹ️ Pour générer un nouveau menu imprimable, cliquez sur le bouton <strong className="text-[#0B5D2A] dark:text-green-400">Créer catalogue A4</strong> ci-dessus. Vous pourrez filtrer les produits de boulangerie à afficher sur la page imprimable.
+          <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-gray-150/40 dark:border-slate-850">
+            <span className="text-[9px] uppercase font-bold text-gray-400 block tracking-wider">Disponibles</span>
+            <div className="flex items-baseline gap-1.5 mt-0.5">
+              <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                {products.filter(p => p.disponibilite === 'disponible').length}
+              </span>
+              <span className="text-[9px] text-gray-400">en stock</span>
+            </div>
+          </div>
+
+          <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-gray-150/40 dark:border-slate-850">
+            <span className="text-[9px] uppercase font-bold text-gray-400 block tracking-wider">En Rupture</span>
+            <div className="flex items-baseline gap-1.5 mt-0.5">
+              <span className="text-xl font-black text-rose-500 font-mono">
+                {products.filter(p => p.disponibilite === 'indisponible').length}
+              </span>
+              <span className="text-[9px] text-gray-400">à réapprovisionner</span>
+            </div>
+          </div>
+
+          <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-gray-150/40 dark:border-slate-850">
+            <span className="text-[9px] uppercase font-bold text-gray-400 block tracking-wider">Catalogue A4</span>
+            <div className="flex items-baseline gap-1.5 mt-0.5">
+              <span className="text-xl font-black text-orange-500 font-mono">
+                {products.filter(p => p.show_in_catalog !== false).length}
+              </span>
+              <span className="text-[9px] text-gray-400">sélectionnés</span>
             </div>
           </div>
         </div>
 
-        {/* Right pane: Core product lists with miniature and action keys */}
-        <div className="lg:col-span-2 bg-white dark:bg-[#0f1a30] p-6 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-xs transition-colors">
-          <div className="flex justify-between items-center border-b border-gray-100 dark:border-slate-800 pb-3 flex-wrap gap-2 text-left">
-            <div>
-              <h3 className="font-display font-extrabold text-[#0B5D2A] dark:text-green-400 text-sm">
-                📋 Liste commerciale des produits
-              </h3>
-              <p className="text-[11.5px] text-gray-400 font-sans mt-0.5">Cliquez sur l'œil pour masquer ou afficher rapidement un produit du catalogue A4.</p>
-            </div>
+        {/* Quick helper */}
+        <div className="text-[10px] text-gray-550 dark:text-slate-400 flex items-center gap-1.5 pt-1">
+          <span className="p-1 bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 rounded">💡</span>
+          Pour générer instantanément une version PDF ou un catalogue imprimable, cliquez sur le bouton <strong className="text-orange-500 font-bold uppercase">Créer catalogue A4</strong> ci-dessus.
+        </div>
+      </div>
+
+      {/* SEARCH, CATEGORY FILTER AND LAYOUT TOGGLES BAR */}
+      <div className="bg-white dark:bg-[#0f1a30] p-4 rounded-2xl border border-gray-150 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 no-print shadow-3xs">
+        {/* Left Side: Inputs */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto flex-1">
+          {/* Search */}
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Rechercher un délice..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 text-xs text-gray-800 dark:text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500"
+            />
           </div>
 
-          <div className="overflow-x-auto pt-4">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50/50 dark:bg-slate-900/40 border-b border-gray-200 dark:border-slate-800 text-gray-450 dark:text-slate-400 uppercase font-mono tracking-wider text-[9px]">
-                  <th className="py-2.5 px-3">Produit</th>
-                  <th className="py-2.5 px-3">Catégorie</th>
-                  <th className="py-2.5 px-3 text-right">Tarif (FCFA)</th>
-                  <th className="py-2.5 px-3 text-center">Disponibilité</th>
-                  <th className="py-2.5 px-3 text-center">Catalogue</th>
-                  {!isReadOnly && <th className="py-2.5 px-3 text-center w-24">Actions</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-                {products.length > 0 ? (
-                  products.map(p => {
-                     const showInCat = p.show_in_catalog !== false;
-                     return (
-                      <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
-                        {/* Miniature and name */}
-                        <td className="py-3 px-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden border border-gray-200 dark:border-slate-805 shrink-0">
-                              {p.image_url ? (
-                                <img src={p.image_url} alt={p.nom} className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-300 font-bold uppercase bg-slate-50 text-[9px]">
-                                  BOAF
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <span className="font-bold text-gray-900 dark:text-slate-205 block leading-tight">{p.nom}</span>
-                              {p.description && (
-                                <span className="text-[10px] text-gray-400 dark:text-slate-500 block truncate max-w-[200px] mt-0.5 font-sans italic">{p.description}</span>
-                              )}
-                            </div>
-                          </div>
-                        </td>
+          {/* Category Selector */}
+          <div className="relative w-full sm:w-44">
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="w-full px-3 py-1.5 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 text-xs text-gray-750 dark:text-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500 font-bold cursor-pointer"
+            >
+              <option value="all">Toutes catégories</option>
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+        </div>
 
-                        {/* Category */}
-                        <td className="py-3 px-3">
-                          <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-850 text-gray-700 dark:text-slate-350 text-[9.5px] rounded-md font-sans">
-                            {p.categorie}
-                          </span>
-                        </td>
+        {/* Right Side: Layout Switcher */}
+        <div className="flex items-center gap-1 bg-gray-50 dark:bg-slate-950 p-1 rounded-xl border border-gray-200/50 dark:border-slate-800">
+          <button
+            onClick={() => setActiveLayout('gallery')}
+            className={`px-3 py-1.5 text-[11px] font-black uppercase rounded-lg flex items-center gap-1 cursor-pointer transition-all ${
+              activeLayout === 'gallery'
+                ? 'bg-orange-500 text-white shadow-xs'
+                : 'text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white'
+            }`}
+          >
+            <Grid className="w-3.5 h-3.5" />
+            Galerie (Photos)
+          </button>
+          <button
+            onClick={() => setActiveLayout('table')}
+            className={`px-3 py-1.5 text-[11px] font-black uppercase rounded-lg flex items-center gap-1 cursor-pointer transition-all ${
+              activeLayout === 'table'
+                ? 'bg-orange-500 text-white shadow-xs'
+                : 'text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white'
+            }`}
+          >
+            <List className="w-3.5 h-3.5" />
+            Tableau
+          </button>
+        </div>
+      </div>
 
-                        {/* Price formatted */}
-                        <td className="py-3 px-3 text-right font-bold text-gray-950 dark:text-slate-200 font-mono">
+      {/* FILTERED PRODUCTS RENDERING */}
+      <div className="no-print">
+        {activeLayout === 'gallery' ? (
+          /* DYNAMIC GALLERY VISUAL GRID VIEW (WITH RICH PRODUCT IMAGES) */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {products.filter(p => {
+              const matchesSearch = p.nom.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                    (p.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+              const matchesCategory = categoryFilter === 'all' || p.categorie === categoryFilter;
+              return matchesSearch && matchesCategory;
+            }).map((p) => {
+              const showInCat = p.show_in_catalog !== false;
+              return (
+                <div 
+                  key={p.id}
+                  className="bg-white dark:bg-[#0f1a30] rounded-3xl border border-gray-150 dark:border-slate-800 overflow-hidden shadow-xs hover:shadow-md hover:border-orange-500/20 transition-all flex flex-col justify-between group"
+                >
+                  {/* Image frame */}
+                  <div className="relative aspect-video bg-slate-100 dark:bg-slate-900 overflow-hidden border-b border-gray-100 dark:border-slate-855 shrink-0">
+                    {p.image_url ? (
+                      <img 
+                        src={p.image_url} 
+                        alt={p.nom} 
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300" 
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-slate-50 dark:bg-slate-955 text-gray-300 font-extrabold text-[10px] tracking-widest">
+                        BOAF DELICES
+                      </div>
+                    )}
+                    
+                    {/* Category tag overlaid */}
+                    <span className="absolute top-3 left-3 px-2 py-0.5 bg-black/65 backdrop-blur-xs text-white text-[9px] font-black uppercase rounded-md tracking-wider">
+                      {p.categorie}
+                    </span>
+
+                    {/* Catalog visibility status icon top-right */}
+                    <button
+                      disabled={isReadOnly}
+                      onClick={() => handleToggleCatalogStatus(p.id)}
+                      className="absolute top-3 right-3 p-1.5 bg-white/90 dark:bg-[#0f1a30]/90 backdrop-blur-xs text-gray-700 dark:text-slate-355 hover:text-orange-500 rounded-lg border border-gray-150 dark:border-slate-800 cursor-pointer transition-all shadow-xs disabled:opacity-40"
+                      title={showInCat ? "Masquer de la page imprimable A4" : "Afficher sur la page imprimable A4"}
+                    >
+                      {showInCat ? (
+                        <Eye className="w-4 h-4 text-[#0B5D2A] dark:text-emerald-400" />
+                      ) : (
+                        <EyeOff className="w-4 h-4 text-gray-400" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Core description details */}
+                  <div className="p-4 flex-1 flex flex-col justify-between gap-3 text-left">
+                    <div className="space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="font-extrabold text-sm text-gray-900 dark:text-white leading-tight">
+                          {p.nom}
+                        </h4>
+                      </div>
+                      
+                      {p.description && (
+                        <p className="text-[10.5px] text-gray-450 dark:text-slate-400 line-clamp-3 leading-relaxed italic">
+                          {p.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Footer values & indicators */}
+                    <div className="pt-2 border-t border-gray-100 dark:border-slate-800/80 flex items-center justify-between shrink-0">
+                      <div>
+                        <span className="text-[9px] font-bold text-gray-400 block uppercase">Prix public</span>
+                        <span className="text-sm font-black font-mono text-gray-950 dark:text-slate-150">
                           {p.prix.toLocaleString('fr-FR')} F
-                        </td>
+                        </span>
+                      </div>
 
-                        {/* Availability */}
-                        <td className="py-3 px-3 text-center">
-                          {p.disponibilite === 'indisponible' ? (
-                            <span className="px-2 py-0.5 bg-red-50 dark:bg-red-955/20 text-red-700 dark:text-red-405 font-bold font-sans text-[9px] rounded-md uppercase">
-                              Épuisé
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-955/20 text-emerald-700 dark:text-emerald-405 font-bold font-sans text-[9px] rounded-md uppercase">
-                              Disponible
-                            </span>
-                          )}
-                        </td>
+                      {/* Disponibilité Status Badge */}
+                      {p.disponibilite === 'indisponible' ? (
+                        <span className="px-2 py-0.5 bg-red-50 text-red-655 dark:bg-red-950/20 dark:text-red-400 text-[8px] font-black uppercase rounded border border-red-150 dark:border-red-900/40">
+                          Épuisé
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-955/20 dark:text-emerald-400 text-[8px] font-black uppercase rounded border border-emerald-150 dark:border-emerald-900/40">
+                          Disponible
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
-                        {/* Show in catalogue indicator */}
-                        <td className="py-3 px-3 text-center">
-                          <button
-                            disabled={isReadOnly}
-                            onClick={() => handleToggleCatalogStatus(p.id)}
-                            title={showInCat ? "Affiché sur le catalogue A4" : "Masqué du catalogue A4"}
-                            className="bg-transparent border-none cursor-pointer opacity-80 hover:opacity-100 disabled:opacity-40"
-                          >
-                            {showInCat ? (
-                              <Eye className="w-5 h-5 text-[#0B5D2A] dark:text-green-400" />
-                            ) : (
-                              <EyeOff className="w-5 h-5 text-gray-350" />
-                            )}
-                          </button>
-                        </td>
+                  {/* Operational Controls if not isReadOnly */}
+                  {!isReadOnly && (
+                    <div className="px-4 pb-4 flex gap-1.5 shrink-0">
+                      <button
+                        onClick={() => handleEditProductClick(p)}
+                        className="flex-1 py-1.5 bg-gray-50 hover:bg-gray-150/80 dark:bg-slate-900 dark:hover:bg-slate-850 text-gray-600 dark:text-slate-300 text-[10px] font-bold uppercase rounded-lg border border-gray-200 dark:border-slate-800 cursor-pointer flex items-center justify-center gap-1 transition-all"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        Modifier
+                      </button>
+                      <button
+                        onClick={() => handleDeleteProduct(p.id)}
+                        className="py-1.5 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] font-bold uppercase rounded-lg border border-rose-150 cursor-pointer flex items-center justify-center gap-1 transition-all"
+                        title="Supprimer définitivement"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
-                        {/* Action buttons */}
-                        {!isReadOnly && (
-                          <td className="py-3 px-3 text-center">
-                            <div className="flex justify-center gap-1">
-                              <button
-                                onClick={() => handleEditProductClick(p)}
-                                title="Modifier"
-                                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-gray-600 dark:text-slate-400 rounded-lg cursor-pointer border-none"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteProduct(p.id)}
-                                title="Supprimer de la liste"
-                                className="p-1.5 hover:bg-red-50 text-red-550 rounded-lg cursor-pointer border-none"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+            {products.filter(p => {
+              const matchesSearch = p.nom.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                    (p.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+              const matchesCategory = categoryFilter === 'all' || p.categorie === categoryFilter;
+              return matchesSearch && matchesCategory;
+            }).length === 0 && (
+              <div className="col-span-full bg-white dark:bg-[#0f1a30] p-12 rounded-3xl border border-dashed border-gray-200 dark:border-slate-800 text-center">
+                <AlertCircle className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                <p className="text-xs text-gray-550 dark:text-slate-400 italic">
+                  Aucun produit ne correspond à vos critères de recherche actuels.
+                </p>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* COMPACT PROFESSIONAL TABLE VIEW */
+          <div className="bg-white dark:bg-[#0f1a30] rounded-3xl border border-gray-150 dark:border-slate-800 shadow-xs overflow-hidden text-left">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50/50 dark:bg-slate-900/40 border-b border-gray-150 dark:border-slate-800 text-gray-440 dark:text-slate-400 uppercase font-mono tracking-wider text-[9px]">
+                    <th className="py-3 px-4">Produit</th>
+                    <th className="py-3 px-4">Catégorie</th>
+                    <th className="py-3 px-4 text-right">Tarif (FCFA)</th>
+                    <th className="py-3 px-4 text-center">Disponibilité</th>
+                    <th className="py-3 px-4 text-center">A4 Catalogue</th>
+                    {!isReadOnly && <th className="py-3 px-5 text-center w-24">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+                  {products.filter(p => {
+                    const matchesSearch = p.nom.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                          (p.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+                    const matchesCategory = categoryFilter === 'all' || p.categorie === categoryFilter;
+                    return matchesSearch && matchesCategory;
+                  }).length > 0 ? (
+                    products.filter(p => {
+                      const matchesSearch = p.nom.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                            (p.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+                      const matchesCategory = categoryFilter === 'all' || p.categorie === categoryFilter;
+                      return matchesSearch && matchesCategory;
+                    }).map(p => {
+                      const showInCat = p.show_in_catalog !== false;
+                      return (
+                        <tr key={p.id} className="hover:bg-slate-50/55 dark:hover:bg-slate-900/30 transition-colors">
+                          {/* Miniature and name */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden border border-gray-200 dark:border-slate-805 shrink-0">
+                                {p.image_url ? (
+                                  <img src={p.image_url} alt={p.nom} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-gray-300 font-bold uppercase bg-slate-50 text-[9px]">
+                                    BOAF
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <span className="font-bold text-gray-900 dark:text-slate-205 block leading-tight">{p.nom}</span>
+                                {p.description && (
+                                  <span className="text-[10px] text-gray-450 dark:text-slate-500 block truncate max-w-[250px] mt-0.5 font-sans italic">{p.description}</span>
+                                )}
+                              </div>
                             </div>
                           </td>
-                        )}
-                      </tr>
-                     );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={6} className="text-center py-12 text-gray-400 italic">
-                      Aucun produit enregistré pour l'instant. Ajoutez des pains et jus pour démarrer.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+
+                          {/* Category */}
+                          <td className="py-3 px-4">
+                            <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-850 text-gray-700 dark:text-slate-350 text-[9.5px] rounded-md font-sans font-semibold">
+                              {p.categorie}
+                            </span>
+                          </td>
+
+                          {/* Price formatted */}
+                          <td className="py-3 px-4 text-right font-bold text-gray-950 dark:text-slate-200 font-mono">
+                            {p.prix.toLocaleString('fr-FR')} F
+                          </td>
+
+                          {/* Availability */}
+                          <td className="py-3 px-4 text-center">
+                            {p.disponibilite === 'indisponible' ? (
+                              <span className="px-2 py-0.5 bg-red-50 dark:bg-red-955/20 text-red-700 dark:text-red-405 font-bold font-sans text-[9px] rounded-md uppercase">
+                                Épuisé
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-955/20 text-emerald-700 dark:text-emerald-405 font-bold font-sans text-[9px] rounded-md uppercase">
+                                Disponible
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Show in catalogue indicator */}
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              disabled={isReadOnly}
+                              onClick={() => handleToggleCatalogStatus(p.id)}
+                              title={showInCat ? "Affiché sur le catalogue A4" : "Masqué du catalogue A4"}
+                              className="bg-transparent border-none cursor-pointer opacity-85 hover:opacity-100 disabled:opacity-40"
+                            >
+                              {showInCat ? (
+                                <Eye className="w-5 h-5 text-[#0B5D2A] dark:text-green-400" />
+                              ) : (
+                                <EyeOff className="w-5 h-5 text-gray-350" />
+                              )}
+                            </button>
+                          </td>
+
+                          {/* Action buttons */}
+                          {!isReadOnly && (
+                            <td className="py-3 px-5 text-center">
+                              <div className="flex justify-center gap-1">
+                                <button
+                                  onClick={() => handleEditProductClick(p)}
+                                  title="Modifier"
+                                  className="p-1.5 hover:bg-slate-105 dark:hover:bg-slate-800 text-gray-600 dark:text-slate-400 rounded-lg cursor-pointer border-none"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteProduct(p.id)}
+                                  title="Supprimer de la liste"
+                                  className="p-1.5 hover:bg-rose-50 text-red-550 rounded-lg cursor-pointer border-none"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="text-center py-12 text-gray-400 italic">
+                        Aucun produit enregistré ne correspond à vos filtres.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* CATALOG PREVIEW & PRINT/EXPORT MODAL (PAPER MODEL VIEW) */}

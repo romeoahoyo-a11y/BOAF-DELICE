@@ -9,7 +9,9 @@ import {
   Save,
   ShieldCheck,
   Plus,
-  Trash2
+  Trash2,
+  Database,
+  Lock
 } from 'lucide-react';
 import { Zone, Product, Actor } from '../types';
 
@@ -43,6 +45,19 @@ export default function SettingsView({
   const [commTraiteurMax, setCommTraiteurMax] = useState(5);
 
   const isReadOnly = currentRole === 'lecteur' || currentRole === 'whatsapp' || currentRole === 'agent';
+
+  // Supabase connection configuration states
+  const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem('boaf_supabase_url') || 'https://boaf-delices.supabase.co');
+  const [supabaseKey, setSupabaseKey] = useState(() => localStorage.getItem('boaf_supabase_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.sfw-boaf-key-example');
+  const [supabaseTable, setSupabaseTable] = useState(() => localStorage.getItem('boaf_supabase_table') || 'commandes');
+
+  const handleSaveSupabaseConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('boaf_supabase_url', supabaseUrl);
+    localStorage.setItem('boaf_supabase_key', supabaseKey);
+    localStorage.setItem('boaf_supabase_table', supabaseTable);
+    alert('Configuration de connexion Supabase enregistrée avec succès !');
+  };
 
   // Zone addition controls
   const [newZoneName, setNewZoneName] = useState('');
@@ -409,6 +424,81 @@ export default function SettingsView({
 
         </div>
 
+      </div>
+
+      {/* Configuration API Supabase Externe */}
+      <div className="bg-white dark:bg-[#121c33] p-6 rounded-3xl border border-gray-150 dark:border-slate-800 shadow-2xs text-left space-y-4">
+        <div className="border-b border-gray-100 dark:border-slate-800 pb-3 flex items-center gap-2">
+          <Database className="w-5 h-5 text-emerald-500" />
+          <h3 className="font-display font-extrabold text-[#0B5D2A] dark:text-green-400 text-sm">
+            Paramètres de Connexion API Externe (Supabase)
+          </h3>
+        </div>
+        
+        <p className="text-gray-500 dark:text-slate-400 text-[11px] leading-relaxed">
+          Configurez ici les accès sécurisés à votre base de données ou projet Supabase externe pour permettre la synchronisation automatisée des commandes vers BOAF Délices.
+        </p>
+
+        <form onSubmit={handleSaveSupabaseConfig} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <label className="block text-[10px] uppercase font-bold tracking-wider text-gray-500 dark:text-slate-400">
+                URL du Projet Supabase
+              </label>
+              <input
+                type="text"
+                value={supabaseUrl}
+                onChange={(e) => setSupabaseUrl(e.target.value)}
+                disabled={isReadOnly}
+                placeholder="https://your-project.supabase.co"
+                className="w-full p-2.5 border border-gray-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-lg text-xs font-mono text-gray-800 dark:text-white"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-[10px] uppercase font-bold tracking-wider text-gray-500 dark:text-slate-400">
+                Clé API Service Role
+              </label>
+              <div className="relative">
+                <input
+                  type="password"
+                  value={supabaseKey}
+                  onChange={(e) => setSupabaseKey(e.target.value)}
+                  disabled={isReadOnly}
+                  placeholder="eyJhbGciOiJIUzI1..."
+                  className="w-full p-2.5 pl-3 pr-8 border border-gray-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-lg text-xs font-mono text-gray-800 dark:text-white font-sans"
+                />
+                <Lock className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-[10px] uppercase font-bold tracking-wider text-gray-500 dark:text-slate-400">
+                Nom de la Table de Commandes
+              </label>
+              <input
+                type="text"
+                value={supabaseTable}
+                onChange={(e) => setSupabaseTable(e.target.value)}
+                disabled={isReadOnly}
+                placeholder="commandes"
+                className="w-full p-2.5 border border-gray-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-lg text-xs font-mono text-gray-800 dark:text-white"
+              />
+            </div>
+          </div>
+
+          {!isReadOnly && (
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md shadow-green-900/10 transition-all"
+              >
+                <Save className="w-4 h-4" />
+                Enregistrer les paramètres Supabase
+              </button>
+            </div>
+          )}
+        </form>
       </div>
 
       {/* Critical System Control Box (Reset / Seed) */}
