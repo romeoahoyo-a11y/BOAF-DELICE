@@ -8,10 +8,10 @@ import {
   Coins,
   FileSpreadsheet,
   Settings,
-  Flame,
   CheckSquare,
   Tag,
-  BookOpen
+  BookOpen,
+  UserCheck
 } from 'lucide-react';
 import { Order } from '../types';
 
@@ -23,14 +23,6 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeTab, setActiveTab, orders, currentRole }: SidebarProps) {
-  // Compute live sales sum for current progress towards the 10,000,000 FCFA goal
-  const totalSalesNet = orders
-    .filter(o => o.order_status === 'valid' && o.payment_status === 'paid')
-    .reduce((sum, o) => sum + o.total_net, 0);
-
-  const goalTarget = 10000000; // 10 Million FCFA
-  const percentage = Math.min(100, Math.round((totalSalesNet / goalTarget) * 100));
-
   const fullNavItems = [
     { id: 'dashboard', label: 'Accueil', icon: LayoutDashboard },
     { id: 'sales', label: 'Ventes', icon: Receipt },
@@ -39,15 +31,20 @@ export default function Sidebar({ activeTab, setActiveTab, orders, currentRole }
     { id: 'promo_codes', label: 'Codes Promo', icon: Tag },
     { id: 'attendance', label: 'Présence Terrain', icon: MapPin },
     { id: 'reports', label: 'Rapports', icon: FileSpreadsheet },
+    { id: 'hr', label: 'Équipe & Accès RH', icon: UserCheck },
   ];
 
   // Role based filtering: 
   // - Admin & Superviseur see all.
+  // - RH (Human Resources) sees Accueil, Acteurs, Catalogue Produits, Présence Terrain, Rapports, Équipe & Accès RH
   // - Agent sees Accueil, Ventes, Catalogue Produits, Présence Terrain.
   // - Partner/Ambassador sees Accueil, Codes Promo, Catalogue Produits.
   const filteredNavItems = fullNavItems.filter(item => {
     if (currentRole === 'agent') {
       return ['dashboard', 'sales', 'products', 'attendance'].includes(item.id);
+    }
+    if (currentRole === 'rh') {
+      return ['dashboard', 'actors', 'products', 'attendance', 'reports', 'hr'].includes(item.id);
     }
     if (['partner', 'ambassador', 'collaborator'].includes(currentRole)) {
       return ['dashboard', 'promo_codes', 'products'].includes(item.id);
@@ -94,9 +91,9 @@ export default function Sidebar({ activeTab, setActiveTab, orders, currentRole }
         })}
       </nav>
 
-      {/* Discrete administrative setup / gear at the bottom if admin or supervisor */}
-      {(currentRole === 'admin' || currentRole === 'superviseur') && (
-        <div className="px-4 pb-2 border-t border-gray-100 dark:border-slate-800 pt-3">
+      {/* Discrete administrative setup / gear at the bottom if admin, supervisor or RH */}
+      {(currentRole === 'admin' || currentRole === 'superviseur' || currentRole === 'rh') && (
+        <div className="px-4 pb-4 border-t border-gray-100 dark:border-slate-800 pt-3">
           <button
             onClick={() => setActiveTab('settings')}
             className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-tight transition-colors cursor-pointer ${
@@ -110,43 +107,6 @@ export default function Sidebar({ activeTab, setActiveTab, orders, currentRole }
           </button>
         </div>
       )}
-
-      {/* Dynamic Objective Gauge Widget */}
-      <div className="p-4 m-4 bg-[#0B5D2A] rounded-2xl text-white shadow-lg space-y-4 relative overflow-hidden">
-        {/* Subtle decorative background light */}
-        <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-green-700/40 rounded-full blur-2xl" />
-
-        <div className="flex items-center gap-2 relative z-10">
-          <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center">
-            <Flame className="w-4 h-4 text-white animate-pulse" />
-          </div>
-          <div>
-            <span className="text-xs text-green-200 font-mono tracking-wider block uppercase">
-              Objectif Mensuel
-            </span>
-            <span className="text-lg font-bold font-display tracking-tight text-white">
-              {percentage}% Atteint
-            </span>
-          </div>
-        </div>
-
-        <div className="space-y-1.5 relative z-10">
-          <div className="flex justify-between text-[11px] font-mono text-green-100">
-            <span>{totalSalesNet.toLocaleString('fr-FR')} FCFA</span>
-            <span>10M FCFA</span>
-          </div>
-          {/* Custom styled progress bars: forest green with custom orange loader bar */}
-          <div className="w-full h-2.5 bg-green-900/60 rounded-full overflow-hidden border border-green-800">
-            <div
-              className="h-full bg-orange-500 rounded-full transition-all duration-500"
-              style={{ width: `${percentage}%` }}
-            />
-          </div>
-          <span className="text-[10px] text-green-200 block text-center italic mt-1 bg-green-900/40 py-1 px-2 rounded-lg leading-relaxed">
-            Obj. Mensuel: 10 000 000 FCFA
-          </span>
-        </div>
-      </div>
     </aside>
   );
 }

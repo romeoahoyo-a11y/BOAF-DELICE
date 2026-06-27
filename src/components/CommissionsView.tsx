@@ -33,7 +33,7 @@ export default function CommissionsView({
   const [selectedCommIds, setSelectedCommIds] = useState<string[]>([]);
 
   const isReadOnly = currentRole === 'lecteur' || currentRole === 'whatsapp';
-  const hasValidationPower = currentRole === 'admin' || currentRole === 'superviseur';
+  const hasValidationPower = currentRole === 'admin' || currentRole === 'superviseur' || currentRole === 'rh';
 
   // Apply filters
   const filteredComms = commissions.filter(c => {

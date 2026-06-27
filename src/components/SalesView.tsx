@@ -12,9 +12,14 @@ import {
   Printer,
   Smartphone,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Database,
+  RefreshCw,
+  AlertCircle,
+  Lock
 } from 'lucide-react';
 import { Order, Product, PromoCode, Actor, OrderItem } from '../types';
+import { parseClientNameAndPromo } from '../utils/promoMatcher';
 
 interface SalesViewProps {
   orders: Order[];
@@ -37,6 +42,207 @@ export default function SalesView({
 }: SalesViewProps) {
   
   // States
+  const [isSupabaseSyncMode, setIsSupabaseSyncMode] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncSuccessMessage, setSyncSuccessMessage] = useState('');
+  const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem('boaf_supabase_url') || 'https://boaf-delices.supabase.co');
+  const [supabaseKey, setSupabaseKey] = useState(() => localStorage.getItem('boaf_supabase_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.sfw-boaf-key-example');
+  const [supabaseTable, setSupabaseTable] = useState(() => localStorage.getItem('boaf_supabase_table') || 'commandes');
+  const [showErrorOnly, setShowErrorOnly] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importText, setImportText] = useState('');
+
+  const handleSyncSupabase = async () => {
+    setIsSyncing(true);
+    setSyncSuccessMessage('');
+    
+    const isPlaceholderKey = supabaseKey.includes('sfw-boaf-key-example') || !supabaseKey;
+    const isPlaceholderUrl = supabaseUrl.includes('boaf-delices.supabase.co') || !supabaseUrl;
+    
+    if (isPlaceholderKey || isPlaceholderUrl) {
+      setIsSyncing(false);
+      alert("Veuillez saisir votre URL de projet et votre clé de Service Role réels pour lancer la synchronisation de production.");
+      return;
+    }
+
+    // Real REST API query to their real Supabase project!
+    try {
+      const response = await fetch(`${supabaseUrl}/rest/v1/${supabaseTable}?select=*`, {
+        method: 'GET',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      if (!Array.isArray(data)) {
+        throw new Error("Le format renvoyé par l'API REST de Supabase n'est pas un tableau de lignes.");
+      }
+      
+      let count = 0;
+      data.forEach((row: any, idx: number) => {
+        const rawName = row.customer_name || row.nom_client || row.client_name || row.customerName || 'Client Supabase';
+        const phone = row.customer_phone || row.phone || row.telephone || '';
+        const pName = row.product_name || row.produit || products[0]?.nom || 'Pain Brioché Premium';
+        const quantity = parseInt(row.quantity || row.quantite || row.qty || '1', 10);
+        const price = parseFloat(row.price || row.prix || row.prix_unitaire || products[0]?.prix || '1500');
+        const rowPayment = row.payment_mode || row.payment || 'Mobile Money';
+        
+        const totalBrut = price * quantity;
+        const parsed = parseClientNameAndPromo(rawName, promoCodes, actors);
+        
+        const codeId = parsed.matchedPromoCode ? parsed.matchedPromoCode.id : undefined;
+        const codeText = parsed.matchedPromoCode ? parsed.matchedPromoCode.code : (parsed.code_complet || parsed.numero_code || undefined);
+        const discount = (parsed.matchedPromoCode && !parsed.has_code_error) ? Math.round(totalBrut * 0.05) : 0;
+        const totalNet = totalBrut - discount;
+        
+        const ticketNum = row.ticket_number || `TK-SUP-REAL-${Date.now().toString().slice(-6)}-${idx}`;
+        
+        if (orders.some(o => o.ticket_number === ticketNum)) {
+          return; // skip duplicate
+        }
+        
+        const item = {
+          product_id: row.product_id || products[0]?.id || 'prod-1',
+          nom: pName,
+          quantite: quantity,
+          prix_unitaire: price,
+          total_ligne: totalBrut
+        };
+        
+        const newOrder: Order = {
+          id: `ord-sup-real-${row.id || idx}-${Date.now()}`,
+          ticket_number: ticketNum,
+          customer_name: parsed.nom_client,
+          customer_phone: phone || undefined,
+          code_promo_id: codeId,
+          code_promo_text: codeText,
+          items: [item],
+          total_brut: totalBrut,
+          remise: discount,
+          total_net: totalNet,
+          payment_status: 'paid',
+          order_status: 'valid',
+          payment_mode: rowPayment,
+          source: 'Supabase',
+          created_by: 'Supabase API',
+          created_at: row.created_at || new Date().toISOString(),
+          has_code_error: parsed.has_code_error,
+          code_error_type: parsed.code_error_type
+        };
+        
+        onAddOrder(newOrder);
+        count++;
+      });
+      
+      setIsSyncing(false);
+      if (count > 0) {
+        setSyncSuccessMessage(`Synchronisation réelle réussie ! ${count} commande(s) récupérée(s) et synchronisée(s) depuis votre base de données réelle Supabase.`);
+      } else {
+        setSyncSuccessMessage('Synchronisation réelle réussie ! Aucune nouvelle commande détectée dans votre base Supabase.');
+      }
+      setTimeout(() => setSyncSuccessMessage(''), 8000);
+      
+    } catch (err: any) {
+      setIsSyncing(false);
+      alert(`Erreur de connexion réelle à Supabase : ${err.message}\nVérifiez l'URL, la clé Service Role, et les permissions RLS de votre table "${supabaseTable}".`);
+    }
+  };
+
+  const handleImportSales = () => {
+    if (!importText.trim()) {
+      alert('Veuillez saisir des lignes de vente à importer.');
+      return;
+    }
+
+    const lines = importText.split('\n');
+    let importedCount = 0;
+    let ignoredCount = 0;
+
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      // Skip comments
+      if (trimmed.startsWith('#')) return;
+
+      // Expected format: Nom client - Code Promo, Produit, Quantité, Mode Paiement (optionnel)
+      // Example: Ablavi Gnonlonfoun - BOAF-AMB-0024, Pain Brioché Premium, 12, Mobile Money
+      const parts = trimmed.split(',');
+      if (parts.length < 3) {
+        ignoredCount++;
+        return;
+      }
+
+      const rawCustomer = parts[0].trim();
+      const rawProduct = parts[1].trim();
+      const rawQty = parseInt(parts[2].trim(), 10);
+      const rawPayment = parts[3] ? parts[3].trim() : 'Espèces';
+
+      if (isNaN(rawQty) || rawQty <= 0) {
+        ignoredCount++;
+        return;
+      }
+
+      // Find matching product
+      const product = products.find(p => p.nom.toLowerCase() === rawProduct.toLowerCase() || p.id === rawProduct) || products[0] || { id: 'prod-1', nom: 'Pain Brioché Premium', prix: 1500 };
+      
+      const totalBrut = product.prix * rawQty;
+      const parsed = parseClientNameAndPromo(rawCustomer, promoCodes, actors);
+
+      const codeId = parsed.matchedPromoCode ? parsed.matchedPromoCode.id : undefined;
+      const codeText = parsed.matchedPromoCode ? parsed.matchedPromoCode.code : (parsed.code_complet || parsed.numero_code || undefined);
+      const discount = (parsed.matchedPromoCode && !parsed.has_code_error) ? Math.round(totalBrut * 0.05) : 0;
+      const totalNet = totalBrut - discount;
+
+      const todayStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+      const ticketNum = `TK-IMP-${todayStr}-${Math.floor(100000 + Math.random() * 900000)}`;
+
+      const item = {
+        product_id: product.id,
+        nom: product.nom,
+        quantite: rawQty,
+        prix_unitaire: product.prix,
+        total_ligne: totalBrut
+      };
+
+      const newOrder: Order = {
+        id: `ord-imp-${Date.now()}-${index}`,
+        ticket_number: ticketNum,
+        customer_name: parsed.nom_client,
+        customer_phone: undefined,
+        code_promo_id: codeId,
+        code_promo_text: codeText,
+        items: [item],
+        total_brut: totalBrut,
+        remise: discount,
+        total_net: totalNet,
+        payment_status: 'paid',
+        order_status: 'valid',
+        payment_mode: rawPayment,
+        source: 'Importation',
+        created_by: currentRole,
+        created_at: new Date().toISOString(),
+        has_code_error: parsed.has_code_error,
+        code_error_type: parsed.code_error_type
+      };
+
+      onAddOrder(newOrder);
+      importedCount++;
+    });
+
+    setImportText('');
+    setShowImportModal(false);
+    alert(`Importation par lot réussie ! ${importedCount} vente(s) enregistrée(s). Lignes ignorées/erronées : ${ignoredCount}.`);
+  };
+
   const [showNewSaleModal, setShowNewSaleModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [lastCreatedOrder, setLastCreatedOrder] = useState<Order | null>(null);
@@ -101,23 +307,53 @@ export default function SalesView({
       total_ligne: totalBrut
     };
 
+    let finalCustomerName = customerName || 'Client de Passage';
+    let finalPromoCodeId = selectedPromoCodeId !== 'none' ? selectedPromoCodeId : undefined;
+    let finalPromoCodeText = activePromoCode?.code;
+    let finalRemise = discountVal;
+    let finalTotalNet = totalNet;
+    let has_code_error = false;
+    let code_error_type: string | undefined = undefined;
+
+    // Apply auto-parsing if selectedPromoCodeId is 'none' and customerName is provided
+    if (selectedPromoCodeId === 'none' && customerName) {
+      const parsed = parseClientNameAndPromo(customerName, promoCodes, actors);
+      if (parsed.numero_code) {
+        finalCustomerName = parsed.nom_client;
+        if (parsed.matchedPromoCode) {
+          finalPromoCodeId = parsed.matchedPromoCode.id;
+          finalPromoCodeText = parsed.matchedPromoCode.code;
+          // Apply 5% discount
+          finalRemise = Math.round(totalBrut * 0.05);
+          finalTotalNet = totalBrut - finalRemise;
+        } else {
+          // Extracted a code/number but no beneficiary matched
+          finalPromoCodeText = parsed.code_complet || parsed.numero_code;
+          has_code_error = true;
+          code_error_type = 'code_inconnu';
+        }
+      }
+    }
+
     const newOrder: Order = {
       id: `ord-dyn-${Date.now()}`,
       ticket_number: computedTicketNum,
-      customer_name: customerName || 'Client de Passage',
+      customer_name: finalCustomerName,
       customer_phone: customerPhone || undefined,
-      code_promo_id: selectedPromoCodeId !== 'none' ? selectedPromoCodeId : undefined,
-      code_promo_text: activePromoCode?.code,
+      code_promo_id: finalPromoCodeId,
+      code_promo_text: finalPromoCodeText,
       items: [item],
       total_brut: totalBrut,
-      remise: discountVal,
-      total_net: totalNet,
+      remise: finalRemise,
+      total_net: finalTotalNet,
       payment_status: 'paid',
       order_status: 'valid',
       payment_mode: paymentMode,
       source: currentRole === 'agent' ? 'Terrain' : 'Direct',
       created_by: currentRole,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      has_code_error,
+      code_error_type
     };
 
     onAddOrder(newOrder);
@@ -140,6 +376,7 @@ export default function SalesView({
 
   // Filter local sales lists
   const filteredRecentOrders = orders.filter(o => {
+    if (showErrorOnly && !o.has_code_error) return false;
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -153,31 +390,138 @@ export default function SalesView({
     <div className="space-y-6 text-left">
       
       {/* Upper header section */}
-      <div className="bg-white dark:bg-[#121c33] p-6 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-colors">
+      <div className="bg-white dark:bg-[#121c33] p-6 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-colors">
         <div>
           <h2 className="text-xl font-display font-black text-[#0B5D2A] dark:text-green-400 flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-orange-500" />
-            Enregistrement des Ventes (Caisse Directe)
+            <Database className="w-5 h-5 text-emerald-500 animate-pulse" />
+            Synchronisation & Hub de Ventes Supabase
           </h2>
           <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-normal">
-            Saisissez les ventes réalisées sur l'instant, configurez les remises de code promo et générez immédiatement les reçus scannables de livraison.
+            Plus besoin de saisir vos ventes en double ! Connectez la base de données de votre logiciel de vente externe Supabase pour alimenter automatiquement les résultats de BOAF Délices.
           </p>
         </div>
         
-        <button
-          onClick={() => {
-            if (products.length > 0) {
-              setSelectedProductId(products[0].id);
-              setCustomPrice(products[0].prix);
-            }
-            setShowNewSaleModal(true);
-          }}
-          className="px-6 py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-black text-xs uppercase tracking-wide rounded-2xl flex items-center gap-2 shadow-md hover:scale-101 transition-all cursor-pointer shrink-0"
-        >
-          <PlusCircle className="w-4.5 h-4.5" />
-          Nouvelle vente
-        </button>
+        <div className="flex flex-wrap gap-2.5">
+          <button
+            onClick={() => setIsSupabaseSyncMode(!isSupabaseSyncMode)}
+            className={`px-4 py-2.5 font-bold text-xs uppercase tracking-wider rounded-xl transition-all border flex items-center gap-1.5 cursor-pointer ${
+              isSupabaseSyncMode 
+                ? 'bg-emerald-50 dark:bg-emerald-950/20 text-[#0B5D2A] dark:text-green-400 border-emerald-200 dark:border-emerald-900/40' 
+                : 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-700'
+            }`}
+          >
+            <Database className="w-3.5 h-3.5" />
+            {isSupabaseSyncMode ? 'Mode Supabase Activé' : 'Activer Mode Supabase'}
+          </button>
+
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-750 text-white font-black text-xs uppercase tracking-wide rounded-xl flex items-center gap-1.5 shadow-md hover:scale-101 transition-all cursor-pointer shrink-0"
+          >
+            <FileText className="w-4 h-4" />
+            Importer par lot
+          </button>
+
+          <button
+            onClick={() => {
+              if (products.length > 0) {
+                setSelectedProductId(products[0].id);
+                setCustomPrice(products[0].prix);
+              }
+              setShowNewSaleModal(true);
+            }}
+            className="px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-black text-xs uppercase tracking-wide rounded-xl flex items-center gap-1.5 shadow-md hover:scale-101 transition-all cursor-pointer shrink-0"
+          >
+            <PlusCircle className="w-4 h-4" />
+            Saisie manuelle
+          </button>
+        </div>
       </div>
+
+      {/* Supabase Connection Setup Card */}
+      {isSupabaseSyncMode && (
+        <div className="bg-slate-900/40 dark:bg-[#111c34]/40 p-6 rounded-3xl border border-slate-800 space-y-5">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping" />
+                <h3 className="text-xs font-black uppercase text-white tracking-wider flex items-center gap-1.5">
+                  <Database className="w-4 h-4 text-emerald-400" />
+                  Paramètres de Connexion Supabase Active
+                </h3>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Le logiciel va interroger la table <code className="bg-slate-950 px-1.5 py-0.5 rounded text-emerald-400 font-mono text-[10px]">{supabaseTable}</code> pour identifier toutes les commandes liées à un code promotionnel BOAF actif, puis recalculer instantanément les remises de 5% clients et vos commissions affiliés.
+              </p>
+            </div>
+
+            <button
+              onClick={handleSyncSupabase}
+              disabled={isSyncing}
+              className="px-5 py-3 bg-[#0B5D2A] hover:bg-emerald-700 disabled:bg-emerald-800/60 text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shrink-0"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? 'Lecture Supabase en cours...' : 'Synchroniser maintenant'}
+            </button>
+          </div>
+
+          {/* Sync Success message */}
+          {syncSuccessMessage && (
+            <div className="p-4 bg-emerald-950/30 border border-emerald-900/60 text-emerald-300 rounded-xl text-xs flex items-start gap-2.5 animate-fadeIn">
+              <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <span>{syncSuccessMessage}</span>
+            </div>
+          )}
+
+          {/* Setup fields */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-950/40 p-4 rounded-2xl border border-slate-850">
+            <div className="space-y-1">
+              <label className="block text-[9px] uppercase font-bold tracking-wider text-slate-500">Supabase URL</label>
+              <input
+                type="text"
+                value={supabaseUrl}
+                onChange={(e) => {
+                  setSupabaseUrl(e.target.value);
+                  localStorage.setItem('boaf_supabase_url', e.target.value);
+                }}
+                placeholder="https://your-project.supabase.co"
+                className="w-full py-1.5 px-3 bg-slate-950 border border-slate-800 text-white font-mono text-xs rounded-lg focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-[9px] uppercase font-bold tracking-wider text-slate-500">Service Role API Key</label>
+              <div className="relative">
+                <input
+                  type="password"
+                  value={supabaseKey}
+                  onChange={(e) => {
+                    setSupabaseKey(e.target.value);
+                    localStorage.setItem('boaf_supabase_key', e.target.value);
+                  }}
+                  placeholder="eyJhbGciOiJIUzI1..."
+                  className="w-full py-1.5 pl-3 pr-8 bg-slate-950 border border-slate-800 text-white font-mono text-xs rounded-lg focus:outline-none focus:border-emerald-500"
+                />
+                <Lock className="w-3.5 h-3.5 text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2" />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-[9px] uppercase font-bold tracking-wider text-slate-500">Nom de la table des commandes</label>
+              <input
+                type="text"
+                value={supabaseTable}
+                onChange={(e) => {
+                  setSupabaseTable(e.target.value);
+                  localStorage.setItem('boaf_supabase_table', e.target.value);
+                }}
+                placeholder="commandes"
+                className="w-full py-1.5 px-3 bg-slate-950 border border-slate-800 text-white font-mono text-xs rounded-lg focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main List view table */}
       <div className="bg-white dark:bg-[#121c33] p-6 rounded-3xl border border-gray-150 dark:border-slate-800 shadow-2xs space-y-4 transition-colors">
@@ -189,15 +533,41 @@ export default function SalesView({
             <p className="text-[11px] text-gray-400 dark:text-slate-500">Cliquez sur un ticket pour rééditer son reçu BOAF</p>
           </div>
 
-          <div className="relative max-w-xs w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
-            <input
-              type="text"
-              placeholder="Rechercher ticket, client, code..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-[#0B5D2A] dark:focus:border-green-450 text-gray-800 dark:text-slate-100 transition-colors"
-            />
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex bg-gray-100 dark:bg-slate-900 p-1 rounded-xl">
+              <button
+                onClick={() => setShowErrorOnly(false)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  !showErrorOnly
+                    ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-3xs'
+                    : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                Toutes les ventes
+              </button>
+              <button
+                onClick={() => setShowErrorOnly(true)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                  showErrorOnly
+                    ? 'bg-rose-500 text-white shadow-3xs'
+                    : 'text-gray-400 hover:text-rose-500'
+                }`}
+              >
+                <AlertCircle className="w-3.5 h-3.5" />
+                Alertes ({orders.filter(o => o.has_code_error).length})
+              </button>
+            </div>
+
+            <div className="relative max-w-xs w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
+              <input
+                type="text"
+                placeholder="Rechercher ticket, client, code..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-[#0B5D2A] dark:focus:border-green-450 text-gray-800 dark:text-slate-100 transition-colors"
+              />
+            </div>
           </div>
         </div>
 
@@ -240,7 +610,12 @@ export default function SalesView({
                       {order.items.map(it => `${it.nom} (x${it.quantite})`).join(', ')}
                     </td>
                     <td className="py-3.5 px-4 text-center">
-                      {order.code_promo_text ? (
+                      {order.has_code_error ? (
+                        <span className="bg-rose-100 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 text-[10px] font-bold px-2.5 py-1 rounded-md border border-rose-250 dark:border-rose-900/60 font-mono inline-flex items-center gap-1" title="Le numéro de code promo extrait n'existe pas ou est inactif">
+                          <AlertCircle className="w-3.5 h-3.5 text-rose-500 animate-pulse shrink-0" />
+                          Code Inconnu ({order.code_promo_text || '?'})
+                        </span>
+                      ) : order.code_promo_text ? (
                         <span className="bg-purple-100 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-purple-250 dark:border-purple-900/60 font-mono">
                           {order.code_promo_text}
                         </span>
@@ -441,6 +816,73 @@ export default function SalesView({
                 🎟️ Générer ticket BOAF
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+
+      {/* MODAL 3: BATCH IMPORTER MODAL */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-gray-900/70 dark:bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn text-left text-xs">
+          <div className="bg-white dark:bg-[#111c34] rounded-[28px] w-full max-w-lg overflow-hidden border border-gray-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-[92vh]">
+            
+            <div className="bg-indigo-700 p-5 text-white flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                <h3 className="text-sm font-display font-black uppercase tracking-wider">Importation de Ventes par lot</h3>
+              </div>
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1 space-y-4 text-gray-700 dark:text-slate-200">
+              <div className="bg-indigo-50 dark:bg-indigo-950/30 p-4 rounded-xl border border-indigo-150 dark:border-indigo-900/50 space-y-2">
+                <h4 className="font-bold text-indigo-900 dark:text-indigo-300">Format d'importation requis (CSV ou lignes de texte) :</h4>
+                <p className="text-[11px] leading-relaxed">
+                  Saisissez ou collez une ligne par vente en respectant l'ordre suivant séparé par des virgules : <br />
+                  <code className="bg-white dark:bg-slate-950 px-1.5 py-0.5 rounded text-indigo-700 dark:text-indigo-400 font-mono text-[10px]">Client [et/ou Code], Désignation Produit, Quantité, Mode de Règlement</code>
+                </p>
+                <p className="text-[11px] font-bold mt-1 text-indigo-850 dark:text-indigo-300">Exemples valides :</p>
+                <pre className="bg-white dark:bg-slate-950/80 p-2.5 rounded-lg border border-indigo-100 dark:border-slate-850 text-[10px] font-mono leading-tight">
+{`Ablavi Gnonlonfoun BOAF-AMB-0024, Pain Brioché Premium, 10, Mobile Money
+Jean Hounsou 0025, Gâteau Sec BOAF, 5, Moov Money
+Marc Bio, Viennoiserie Goûter, 12, Espèces`}
+                </pre>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-gray-600 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                  Lignes de vente à traiter
+                </label>
+                <textarea
+                  value={importText}
+                  onChange={(e) => setImportText(e.target.value)}
+                  placeholder="Collez vos lignes de vente ici..."
+                  rows={8}
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-950 border border-gray-205 dark:border-slate-850 rounded-xl text-xs text-gray-800 dark:text-slate-100 font-mono focus:outline-none focus:border-indigo-600 focus:bg-white dark:focus:bg-slate-900 transition-all placeholder-gray-400"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-gray-150 dark:border-slate-800 flex justify-end gap-2 shrink-0">
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="px-4 py-2.5 bg-gray-200 hover:bg-gray-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 font-bold rounded-xl cursor-pointer transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleImportSales}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl cursor-pointer shadow-md shadow-indigo-900/10 transition-colors"
+              >
+                Lancer l'importation par lot
+              </button>
+            </div>
+
           </div>
         </div>
       )}

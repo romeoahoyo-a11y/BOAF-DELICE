@@ -23,6 +23,7 @@ interface HeaderProps {
 export const ROLES_MAPPING = [
   { id: 'admin', label: 'Administrateur / Direction', icon: Shield, color: 'text-red-00' },
   { id: 'superviseur', label: 'Superviseur Commercial', icon: Shield, color: 'text-indigo-600 bg-indigo-100' },
+  { id: 'rh', label: 'Équipe RH / Ressources Humaines', icon: Shield, color: 'text-purple-600 bg-purple-100' },
   { id: 'whatsapp', label: 'Responsable WhatsApp / Vente', icon: Shield, color: 'text-green-600 bg-green-100' },
   { id: 'agent', label: 'Agent Terrain', icon: Shield, color: 'text-amber-600 bg-amber-100' },
   { id: 'lecteur', label: 'Auditeur / Lecteur', icon: Shield, color: 'text-gray-600 bg-gray-100' }
@@ -35,6 +36,7 @@ export default function Header({ currentRole, setCurrentRole, currentUser, setCu
     setCurrentRole(val);
     if (val === 'admin') setCurrentUser('Jean Doussou');
     else if (val === 'superviseur') setCurrentUser('Diana Biokou');
+    else if (val === 'rh') setCurrentUser('Amina Laleye');
     else if (val === 'whatsapp') setCurrentUser('Sylvie Kode');
     else if (val === 'agent') setCurrentUser('Eric Adjovi');
     else setCurrentUser('Auditeur Anonyme');
@@ -54,35 +56,10 @@ export default function Header({ currentRole, setCurrentRole, currentUser, setCu
             className="pl-10 pr-4 py-2 border border-gray-200 dark:border-slate-800 rounded-xl text-xs w-64 bg-gray-50 dark:bg-slate-900/50 text-gray-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-sans"
           />
         </div>
-        
-        {/* Connection status tag */}
-        <span className="flex items-center gap-1.5 px-3 py-1 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 text-[10px] uppercase tracking-wider font-bold rounded-full font-sans border border-green-100 dark:border-green-900/40 hidden md:flex">
-          <span className="w-1.5 h-1.5 bg-green-500 dark:bg-green-400 rounded-full animate-ping" />
-          Serveur connecté
-        </span>
       </div>
 
-      {/* Control Tools - Live Switch role */}
+      {/* Control Tools */}
       <div className="flex items-center gap-6">
-        {/* Simulation Role Selector */}
-        <div className="flex items-center gap-2 bg-[#F8FAFC] dark:bg-slate-900 border border-[#E5E7EB] dark:border-slate-850 px-3 py-1.5 rounded-xl">
-          <Shield className="w-4 h-4 text-orange-500 dark:text-orange-400" />
-          <div className="flex flex-col text-[10px] leading-none">
-            <span className="text-gray-400 dark:text-slate-500 font-mono uppercase tracking-wider">Rôle Simulé</span>
-            <select
-              value={currentRole}
-              onChange={handleRoleChange}
-              className="font-bold text-gray-800 dark:text-slate-200 bg-transparent border-none p-0 focus:outline-none focus:ring-0 text-xs min-w-32 font-sans cursor-pointer hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
-            >
-              {ROLES_MAPPING.map(r => (
-                <option key={r.id} value={r.id} className="text-gray-805 dark:bg-slate-900">
-                  {r.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
         {/* Date Context */}
         <div className="flex items-center gap-2 text-gray-600 dark:text-slate-300 text-xs font-medium border-r border-[#E5E7EB] dark:border-slate-800 pr-6 hidden md:flex">
           <Calendar className="w-4 h-4 text-[#0B5D2A] dark:text-green-400" />
@@ -122,7 +99,7 @@ export default function Header({ currentRole, setCurrentRole, currentUser, setCu
                 {currentUser}
               </span>
               <span className="text-[10px] text-gray-400 dark:text-slate-500 font-mono tracking-wide uppercase">
-                {currentRole === 'admin' ? 'Administrateur' : currentRole === 'superviseur' ? 'Superviseur' : currentRole === 'whatsapp' ? 'Agent WhatsApp' : currentRole === 'agent' ? 'Agent Terrain' : 'Lecteur'}
+                {currentRole === 'admin' ? 'Administrateur' : currentRole === 'superviseur' ? 'Superviseur' : currentRole === 'rh' ? 'Responsable RH' : currentRole === 'whatsapp' ? 'Agent WhatsApp' : currentRole === 'agent' ? 'Agent Terrain' : 'Lecteur'}
               </span>
             </div>
           </div>

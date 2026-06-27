@@ -9,6 +9,7 @@ import AttendanceView from './components/AttendanceView';
 import ReportsView from './components/ReportsView';
 import SettingsView from './components/SettingsView';
 import ProductsCatalogView from './components/ProductsCatalogView';
+import HRView from './components/HRView';
 
 import { getStoredData, saveToStoredData, DEFAULT_ZONES, DEFAULT_ACTORS, DEFAULT_PRODUCTS, DEFAULT_PROMO_CODES, DEFAULT_ORDERS, DEFAULT_COMMISSIONS, DEFAULT_ATTENDANCE_LOGS, DEFAULT_PROSPECTS, DEFAULT_ACTIVITY_LOGS } from './mockData';
 import { Actor, Zone, PromoCode, Product, Order, Commission, AttendanceLog, Prospect, ActivityLog, CommissionStatus } from './types';
@@ -17,7 +18,7 @@ export default function App() {
   // Navigation active tab State
   const [activeTab, setActiveTab] = useState<string>('dashboard');
 
-  // RBAC permissions simulation states
+  // RBAC active permissions roles
   const [currentRole, setCurrentRole] = useState<string>('admin');
   const [currentUser, setCurrentUser] = useState<string>('Jean Doussou');
 
@@ -44,7 +45,7 @@ export default function App() {
       id: `log-${Date.now()}`,
       user_id: currentRole,
       user_name: currentUser,
-      user_role: currentRole === 'admin' ? 'Administrateur' : currentRole === 'superviseur' ? 'Superviseur' : currentRole === 'whatsapp' ? 'Vendeur' : currentRole === 'agent' ? 'Agent' : 'Lecteur',
+      user_role: currentRole === 'admin' ? 'Administrateur' : currentRole === 'superviseur' ? 'Superviseur' : currentRole === 'rh' ? 'Responsable RH' : currentRole === 'whatsapp' ? 'Vendeur' : currentRole === 'agent' ? 'Agent' : 'Lecteur',
       action,
       entity_type: entityType,
       entity_id: entityId,
@@ -285,6 +286,12 @@ export default function App() {
             currentRole={currentRole}
           />
         );
+      case 'hr':
+        return (
+          <HRView
+            currentRole={currentRole}
+          />
+        );
       case 'settings':
         return (
           <SettingsView
@@ -311,7 +318,7 @@ export default function App() {
       {/* 2. Main content container sliding */}
       <div className="flex-1 flex flex-col pl-68 min-w-0 min-h-screen">
         
-        {/* 2a. Dashboard header tools, search inputs and simulated active roles triggers */}
+        {/* 2a. Dashboard header tools, search inputs and active roles */}
         <Header
           currentRole={currentRole}
           setCurrentRole={setCurrentRole}

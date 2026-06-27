@@ -23,7 +23,7 @@ export interface Actor {
   full_name: string;
   phone: string;
   email: string;
-  main_code: string;
+  main_code?: string;
   zone_id: string;
   status: ActorStatus;
   commission_rate: number; // percentage (e.g. 5)
@@ -100,6 +100,8 @@ export interface Order {
   created_by: string; // user ID or Actor ID
   created_at: string;
   cancellation_reason?: string;
+  has_code_error?: boolean;
+  code_error_type?: string;
 }
 
 export interface Commission {

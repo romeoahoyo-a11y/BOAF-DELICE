@@ -494,7 +494,48 @@ export function getStoredData(): PlatformStore {
   }
 
   try {
-    return JSON.parse(stored);
+    const parsed = JSON.parse(stored);
+    
+    // Self-healing mechanism: if collections are empty or missing, populate them with the rich original datasets
+    let updated = false;
+    if (!parsed.orders || parsed.orders.length === 0) {
+      parsed.orders = DEFAULT_ORDERS;
+      updated = true;
+    }
+    if (!parsed.commissions || parsed.commissions.length === 0) {
+      parsed.commissions = DEFAULT_COMMISSIONS;
+      updated = true;
+    }
+    if (!parsed.actors || parsed.actors.length === 0) {
+      parsed.actors = DEFAULT_ACTORS;
+      updated = true;
+    }
+    if (!parsed.promoCodes || parsed.promoCodes.length === 0) {
+      parsed.promoCodes = DEFAULT_PROMO_CODES;
+      updated = true;
+    }
+    if (!parsed.products || parsed.products.length === 0) {
+      parsed.products = DEFAULT_PRODUCTS;
+      updated = true;
+    }
+    if (!parsed.attendanceLogs || parsed.attendanceLogs.length === 0) {
+      parsed.attendanceLogs = DEFAULT_ATTENDANCE_LOGS;
+      updated = true;
+    }
+    if (!parsed.prospects || parsed.prospects.length === 0) {
+      parsed.prospects = DEFAULT_PROSPECTS;
+      updated = true;
+    }
+    if (!parsed.activityLogs || parsed.activityLogs.length === 0) {
+      parsed.activityLogs = DEFAULT_ACTIVITY_LOGS;
+      updated = true;
+    }
+
+    if (updated) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+    }
+
+    return parsed;
   } catch (err) {
     console.error('Error parsing stored data', err);
     return {

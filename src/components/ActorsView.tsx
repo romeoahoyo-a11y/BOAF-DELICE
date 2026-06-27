@@ -50,6 +50,7 @@ export default function ActorsView({
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [selectedRoleType, setSelectedRoleType] = useState<Actor['type_actor']>('agent');
+  const [hasPromoCode, setHasPromoCode] = useState(true);
   const [assignedCodeText, setAssignedCodeText] = useState('');
   const [commissionRate, setCommissionRate] = useState(5);
   const [zoneId, setZoneId] = useState(zones[0]?.id || 'z1');
@@ -96,7 +97,7 @@ export default function ActorsView({
     }
 
     const nextId = `act-${Date.now()}`;
-    const codeText = assignedCodeText || 'BOAF-GEN';
+    const codeText = hasPromoCode ? (assignedCodeText || 'BOAF-GEN') : undefined;
 
     const newActor: Actor = {
       id: nextId,
@@ -116,25 +117,32 @@ export default function ActorsView({
 
     onAddActor(newActor);
 
-    // Create the matching promo code entry in db so it is active
-    const newCode: PromoCode = {
-      id: `code-${nextId}`,
-      code: codeText,
-      type_code: selectedRoleType === 'partner' ? 'BOAF-PRT' : 'BOAF-AGT',
-      actor_id: nextId,
-      status: 'active',
-      starts_at: new Date().toISOString().split('T')[0],
-      created_at: new Date().toISOString().split('T')[0]
-    };
-    onAddPromoCode(newCode);
+    if (hasPromoCode && codeText) {
+      // Create the matching promo code entry in db so it is active
+      const newCode: PromoCode = {
+        id: `code-${nextId}`,
+        code: codeText,
+        type_code: selectedRoleType === 'partner' ? 'BOAF-PRT' : 'BOAF-AGT',
+        actor_id: nextId,
+        status: 'active',
+        starts_at: new Date().toISOString().split('T')[0],
+        created_at: new Date().toISOString().split('T')[0]
+      };
+      onAddPromoCode(newCode);
+    }
 
     // Reset Form
     setFullName('');
     setPhone('');
     setCommissionRate(5);
+    setHasPromoCode(true);
     setShowAddModal(false);
     
-    alert(`L'acteur ${fullName} a été enregistré avec succès et son Code Promo ${codeText} est activé !`);
+    if (hasPromoCode && codeText) {
+      alert(`L'acteur ${fullName} a été enregistré avec succès et son Code Promo ${codeText} est activé !`);
+    } else {
+      alert(`L'acteur ${fullName} a été enregistré avec succès (sans code promo).`);
+    }
   };
 
   // Filter Actors list
@@ -511,22 +519,41 @@ export default function ActorsView({
 
               </div>
 
-              <div className="space-y-1">
-                <label className="block text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px]">Code Promo Attribué automatiquement</label>
-                <input
-                  type="text"
-                  required
-                  value={assignedCodeText}
-                  onChange={(e) => setAssignedCodeText(e.target.value)}
-                  className="w-full p-2.5 bg-purple-50 dark:bg-purple-950/20 text-purple-800 dark:text-purple-300 border border-dashed border-purple-300 dark:border-purple-800 rounded-xl focus:outline-none font-mono font-bold text-center tracking-wider"
-                />
+              <div className="py-2 border-t border-b border-gray-100 dark:border-slate-800 my-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={hasPromoCode}
+                    onChange={(e) => setHasPromoCode(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#0B5D2A] focus:ring-[#0B5D2A] accent-[#0B5D2A]"
+                  />
+                  <span className="text-gray-700 dark:text-slate-300 font-bold uppercase text-[10px]">
+                    Associer un Code Promo actif pour cet acteur
+                  </span>
+                </label>
+                <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-1 pl-6">
+                  Cochez pour générer automatiquement un code de réduction unique pour le suivi de ses commissions sur ventes.
+                </p>
               </div>
+
+              {hasPromoCode && (
+                <div className="space-y-1 animate-fadeIn">
+                  <label className="block text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px]">Code Promo Attribué automatiquement</label>
+                  <input
+                    type="text"
+                    required={hasPromoCode}
+                    value={assignedCodeText}
+                    onChange={(e) => setAssignedCodeText(e.target.value)}
+                    className="w-full p-2.5 bg-purple-50 dark:bg-purple-950/20 text-purple-800 dark:text-purple-300 border border-dashed border-purple-300 dark:border-purple-800 rounded-xl focus:outline-none font-mono font-bold text-center tracking-wider"
+                  />
+                </div>
+              )}
 
               <button
                 type="submit"
                 className="w-full py-3.5 mt-4 bg-[#0B5D2A] hover:bg-[#12823c] text-white font-black uppercase text-xs rounded-xl shadow-md cursor-pointer transition-transform hover:scale-101 border-none"
               >
-                Créer le profil et le code
+                {hasPromoCode ? 'Créer le profil et le code promo' : 'Créer le profil (sans code promo)'}
               </button>
 
             </form>
